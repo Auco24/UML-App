@@ -6,9 +6,13 @@ Der **UML-Trainer** ist eine Lern-App für das Lernfeld 11 und die Abschlussprü
 
 ## Starten
 
-`UML-Trainer.html` herunterladen und per Doppelklick im Browser öffnen. Mehr ist nicht nötig.
+**Direkt im Browser öffnen:** https://auco24.github.io/UML-App/
 
-Der Lernfortschritt wird nur lokal im Browser gespeichert (`localStorage`). Über die Seite „Sicherung“ lässt er sich als Datei exportieren und auf einem anderen Gerät wieder einlesen.
+Über diesen Link läuft die App sofort, ohne Download und ohne Anmeldung.
+
+Wer lieber offline lernt, lädt `UML-Trainer.html` herunter und öffnet die Datei per Doppelklick im Browser. Mehr ist nicht nötig.
+
+Der Lernfortschritt wird nur lokal im eigenen Browser gespeichert (`localStorage`), es werden keine Daten an einen Server geschickt. Webseite und lokale Datei haben deshalb getrennte Lernstände. Über die Seite „Sicherung“ lässt er sich als Datei exportieren und auf einem anderen Gerät wieder einlesen.
 
 ## Inhalt
 
@@ -34,13 +38,14 @@ Dazu kommen übergreifende Funktionen:
 - **Schwachstellen**: Fragen, die oft falsch beantwortet wurden, gezielt wiederholen
 - **Bildexport**: das gezeichnete Diagramm als PNG speichern
 
-Der KI-Tutor und die KI-generierten Aufgaben funktionieren nur in der Online-Variante. In der lokalen Datei erscheint an dieser Stelle nur ein Hinweis, alles andere läuft offline.
+Der KI-Tutor und die KI-generierten Aufgaben funktionieren nur in der Variante, die als Claude-Artifact läuft. Auf der Webseite und in der lokalen Datei erscheint an dieser Stelle nur ein Hinweis, alles andere funktioniert ohne Einschränkung.
 
 ## Aufbau des Repositorys
 
 | Pfad | Inhalt |
 | --- | --- |
 | `UML-Trainer.html` | Die fertige App. Diese Datei wird aus `src/` erzeugt. |
+| `index.html` | Startseite für GitHub Pages, leitet auf `UML-Trainer.html` weiter |
 | `src/template.html` | Grundgerüst: Layout, Theorie der fünf Module, Quiz-Engine |
 | `src/practice.js`, `src/sqmouse.js` | Diagrammeditor und Sequenzdiagramm-Editor |
 | `src/check.js` | Prüf-Bot: Vergleich der Zeichnung mit der Musterlösung |
@@ -62,7 +67,7 @@ Voraussetzung ist Python 3, zusätzliche Pakete werden nicht gebraucht.
 python3 src/build.py
 ```
 
-Das Skript schreibt `UML-Trainer.html` neu in das Hauptverzeichnis. Zusätzlich entsteht unter `build/artifact/` die Online-Variante, die nur den Inhalt von `<body>` enthält. Der Ordner `build/` wird nicht eingecheckt.
+Das Skript schreibt `UML-Trainer.html` neu in das Hauptverzeichnis. Zusätzlich entsteht unter `build/artifact/` die Variante für das Claude-Artifact, die nur den Inhalt von `<body>` enthält. Der Ordner `build/` wird nicht eingecheckt.
 
 Änderungen immer in `src/` vornehmen und danach neu bauen, nicht direkt in `UML-Trainer.html`.
 
