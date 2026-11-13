@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UML-Trainer LF11</title>
+<style>
+:root{
+  --bg:#f6f5f1; --card:#ffffff; --ink:#1d2433; --muted:#5d6577; --line:#d9d6cc;
+  --accent:#2f5bd3; --accent-soft:#e6ecfb; --ok:#1f8a4c; --ok-soft:#e3f4ea; --bad:#c23b3b; --bad-soft:#fbe7e7;
+  --warn:#9a6a00; --warn-soft:#fbf1d6; --code:#f0eee7;
+  --uc:#2f5bd3; --cl:#7a3fc4; --st:#c2410c; --ac:#0f8a7a; --sq:#b4235a;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14161c; --card:#1d2029; --ink:#e7e9ef; --muted:#a0a6b5; --line:#343846;
+    --accent:#7d9cff; --accent-soft:#232c45; --ok:#4cc483; --ok-soft:#18301f; --bad:#ff7a7a; --bad-soft:#3a1d1f;
+    --warn:#e6b84a; --warn-soft:#352c14; --code:#262a35;
+    --uc:#7d9cff; --cl:#b98cf5; --st:#f08a54; --ac:#3fc9b5; --sq:#f06b9b;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14161c; --card:#1d2029; --ink:#e7e9ef; --muted:#a0a6b5; --line:#343846;
+  --accent:#7d9cff; --accent-soft:#232c45; --ok:#4cc483; --ok-soft:#18301f; --bad:#ff7a7a; --bad-soft:#3a1d1f;
+  --warn:#e6b84a; --warn-soft:#352c14; --code:#262a35;
+  --uc:#7d9cff; --cl:#b98cf5; --st:#f08a54; --ac:#3fc9b5; --sq:#f06b9b;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent)}
+.app{display:grid;grid-template-columns:285px 1fr;min-height:100vh}
+nav.side{background:var(--card);border-right:1px solid var(--line);padding:18px 12px;position:sticky;top:0;height:100vh;overflow:auto}
+.brand{font-weight:750;font-size:19px;padding:4px 10px 2px}
+.brand small{display:block;font-weight:500;font-size:13px;color:var(--muted)}
+.navgroup{margin-top:16px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:0 10px}
+.navbtn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0;background:none;color:var(--ink);padding:8px 10px;border-radius:8px;font:inherit;font-size:15px;cursor:pointer}
+.navbtn:hover{background:var(--accent-soft)}
+.navbtn.active{background:var(--accent-soft);color:var(--accent);font-weight:650}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.navbtn .pct{margin-left:auto;font-size:12px;color:var(--muted)}
+main{padding:28px 36px 60px;max-width:1080px;width:100%}
+h1{font-size:28px;margin:0 0 4px;line-height:1.2}
+h2{font-size:21px;margin:28px 0 10px}
+h3{font-size:17px;margin:20px 0 8px}
+.sub{color:var(--muted);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:14px 0}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;cursor:pointer;border-top:4px solid var(--c,var(--accent));transition:transform .1s}
+.tile:hover{transform:translateY(-2px)}
+.tile h3{margin:0 0 4px}
+.tile p{margin:0;color:var(--muted);font-size:14px}
+.bar{height:6px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:10px}
+.bar>i{display:block;height:100%;background:var(--c,var(--accent))}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin:16px 0 4px}
+.tab{border:0;background:none;font:inherit;padding:9px 14px;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px}
+.tab.active{color:var(--ink);border-color:var(--c,var(--accent));font-weight:650}
+.lead{font-size:17px}
+.de{font-weight:650}
+.q-box{border-left:4px solid var(--c,var(--accent));background:var(--accent-soft);padding:10px 14px;border-radius:0 10px 10px 0;margin:12px 0}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{border-bottom:1px solid var(--line);padding:8px 8px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.04em}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:5px;font-size:.92em}
+.notation{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.nitem{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.nitem svg{width:100%;height:auto;aspect-ratio:150/66;max-height:130px;background:var(--bg);border-radius:8px}
+.nitem b{display:block}
+.nitem span{font-size:14px;color:var(--muted)}
+svg.sym text{fill:var(--ink);stroke:none;font-family:system-ui,sans-serif}
+svg .s{stroke:var(--ink);fill:none;stroke-width:1.4}
+svg .d{stroke-dasharray:5 3}
+svg .f{fill:var(--ink);stroke:var(--ink)}
+svg .w{fill:var(--card);stroke:var(--ink);stroke-width:1.4}
+svg .acc{fill:var(--accent);stroke:none}
+marker .mk{stroke:var(--ink);fill:none;stroke-width:1.3}
+marker .mkf{fill:var(--ink);stroke:var(--ink)}
+marker .mkw{fill:var(--card);stroke:var(--ink);stroke-width:1.3}
+.figure{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;margin:12px 0;text-align:center}
+.figure img{max-width:100%;height:auto;cursor:zoom-in}
+.figcap{font-size:13px;color:var(--muted);margin-top:6px;text-align:center}
+.bigsvg{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;margin:12px 0;overflow-x:auto}
+.bigsvg svg{display:block;margin:auto;max-width:100%;height:auto}
+.mist{display:grid;gap:10px}
+.mrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mbad{background:var(--bad-soft);border-radius:10px;padding:10px 12px}
+.mgood{background:var(--ok-soft);border-radius:10px;padding:10px 12px}
+.mbad b{color:var(--bad)} .mgood b{color:var(--ok)}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;padding:9px 16px;border-radius:10px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:default}
+.opts{display:grid;gap:8px;margin:12px 0}
+.opt{text-align:left;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;padding:11px 14px;border-radius:10px;cursor:pointer}
+.opt:hover:not(:disabled){border-color:var(--accent)}
+.opt.ok{background:var(--ok-soft);border-color:var(--ok)}
+.opt.bad{background:var(--bad-soft);border-color:var(--bad)}
+.opt:disabled{cursor:default}
+.expl{padding:10px 14px;border-radius:10px;background:var(--warn-soft);margin-top:8px}
+.qhead{display:flex;justify-content:space-between;color:var(--muted);font-size:14px}
+.qtext{font-size:18px;font-weight:600;margin:6px 0}
+.qsvg{background:var(--bg);border-radius:10px;padding:10px;display:flex;justify-content:center;margin:10px 0}
+.qsvg svg{width:260px;height:115px}
+.result{text-align:center;padding:26px}
+.result .big{font-size:46px;font-weight:800}
+.chk{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.chk input{margin-top:4px;width:18px;height:18px;flex:none}
+.sol{display:none}
+.sol.show{display:block}
+.flash{perspective:900px;max-width:520px;margin:16px auto}
+.flash-inner{position:relative;height:230px;transition:transform .45s;transform-style:preserve-3d;cursor:pointer}
+.flash.flipped .flash-inner{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;background:var(--card);border:1px solid var(--line);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center}
+.face.back{transform:rotateY(180deg)}
+.face .t{font-size:24px;font-weight:750}
+.face .h{color:var(--muted);font-size:13px;margin-top:10px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.pill{display:inline-block;font-size:12px;padding:2px 9px;border-radius:20px;background:var(--accent-soft);color:var(--accent);font-weight:600}
+.compare td:first-child{font-weight:650;white-space:nowrap}
+#zoom{position:fixed;inset:0;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;cursor:zoom-out}
+#zoom img{max-width:100%;max-height:100%;background:#fff;border-radius:8px}
+.topbar{display:none}
+.themebtn{margin:18px 10px 0;font-size:13px}
+ul.clean{padding-left:20px;margin:6px 0}
+ul.clean li{margin:4px 0}
+.tip{background:var(--accent-soft);border-radius:10px;padding:10px 14px;margin:10px 0}
+@media (max-width:820px){
+  .app{grid-template-columns:1fr}
+  nav.side{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line);padding:10px 8px;display:flex;overflow-x:auto;gap:4px;white-space:nowrap}
+  nav.side .brand,nav.side .navgroup,.themebtn{display:none}
+  .navbtn{width:auto;flex:none;padding:8px 10px}
+  .navbtn .pct{display:none}
+  main{padding:18px 16px 50px}
+  .mrow{grid-template-columns:1fr}
+  h1{font-size:23px}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <marker id="aOpen" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path class="mk" d="M1,1 L11,6 L1,11"/></marker>
+    <marker id="aFill" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path class="mkf" d="M1,1 L11,6 L1,11 Z"/></marker>
+    <marker id="tri" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path class="mkw" d="M1,1 L15,8 L1,15 Z"/></marker>
+    <marker id="dia" viewBox="0 0 22 12" refX="1" refY="6" markerWidth="20" markerHeight="11" orient="auto" markerUnits="userSpaceOnUse"><path class="mkw" d="M1,6 L11,1 L21,6 L11,11 Z"/></marker>
+    <marker id="diaF" viewBox="0 0 22 12" refX="1" refY="6" markerWidth="20" markerHeight="11" orient="auto" markerUnits="userSpaceOnUse"><path class="mkf" d="M1,6 L11,1 L21,6 L11,11 Z"/></marker>
+  </defs>
+</svg>
+<div class="app">
+  <nav class="side" id="nav"></nav>
+  <main id="main"></main>
+</div>
+<div id="zoom" onclick="this.style.display='none'"><img alt=""></div>
+<script>
+const IMG = /*IMAGES*/{};
+
+/* ---------- SVG-Hilfsfunktionen ---------- */
+const sv=(inner,w=150,h=66)=>`<svg class="sym" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+const T=(x,y,t,o={})=>`<text x="${x}" y="${y}" font-size="${o.fs||10}" text-anchor="${o.a||'middle'}" ${o.b?'font-weight="700"':''} ${o.i?'font-style="italic"':''} ${o.u?'text-decoration="underline"':''} ${o.c?`style="fill:var(--accent)"`:''}>${t}</text>`;
+const L=(x1,y1,x2,y2,o={})=>`<line class="s ${o.d?'d':''}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" ${o.e?`marker-end="url(#${o.e})"`:''} ${o.s?`marker-start="url(#${o.s})"`:''}/>`;
+const P=(d,o={})=>`<path class="${o.cls||'s'} ${o.d?'d':''}" d="${d}" ${o.e?`marker-end="url(#${o.e})"`:''}/>`;
+const actor=(x,y,s=1)=>`<g transform="translate(${x},${y}) scale(${s})"><circle class="w" cx="0" cy="0" r="6"/>${L(0,6,0,22)}${L(-10,12,10,12)}${L(0,22,-9,34)}${L(0,22,9,34)}</g>`;
+const state=(x,y,w,h,t,fs=10)=>`<rect class="w" x="${x}" y="${y}" width="${w}" height="${h}" rx="9"/>${T(x+w/2,y+h/2+fs/3,t,{fs})}`;
+const action=state;
+const dmd=(x,y,r=9)=>`<path class="w" d="M${x},${y-r} L${x+r},${y} L${x},${y+r} L${x-r},${y} Z"/>`;
+const start=(x,y,r=7)=>`<circle class="f" cx="${x}" cy="${y}" r="${r}"/>`;
+const fin=(x,y)=>`<circle class="w" cx="${x}" cy="${y}" r="9"/><circle class="f" cx="${x}" cy="${y}" r="5"/>`;
+const frag=(op,guard,x=12,y=6,w=126,h=54,sep=false,g2='')=>`<rect class="s" x="${x}" y="${y}" width="${w}" height="${h}"/><path class="w" d="M${x},${y} h30 v9 l-5,5 h-25 Z"/>${T(x+13,y+11,op,{fs:9,b:1})}${T(x+36,y+12,guard,{fs:8,a:'start',c:1})}${sep?L(x,y+h/2+4,x+w,y+h/2+4,{d:1})+T(x+5,y+h/2+15,g2,{fs:8,a:'start',c:1}):''}`;
+const lifeline=(x,y,t,len=40)=>`<rect class="w" x="${x-26}" y="${y}" width="52" height="16"/>${T(x,y+11,t,{fs:9,u:1})}${L(x,y+16,x,y+16+len,{d:1})}`;
+
+/* ---------- DATEN ---------- */
+const MODULES=[
+/* ================= ANWENDUNGSFALLDIAGRAMM ================= */
+{id:'uc',color:'var(--uc)',de:'Anwendungsfalldiagramm',en:'Use-Case-Diagramm',ru:'Use Case Diagram',
+ type:'Verhaltensdiagramm',leit:'Was soll das System leisten – und für wen?',
+ short:'Wer arbeitet mit dem System und welche Funktionen bietet es an.',
+ theory:`
+<p class="lead">Ein <span class="de">Anwendungsfalldiagramm</span> zeigt das <b>funktionale Verhalten</b> eines Systems aus Sicht der externen <span class="de">Akteure</span>: <i>was</i> das System leistet und <i>für wen</i>. Interne Logik und Technik werden nicht dargestellt.</p>
+<div class="q-box"><b>Leitfrage:</b> Was soll das System leisten – und für wen? <br><b>Achtung:</b> Das Diagramm zeigt <u>keine</u> zeitliche Reihenfolge, keine Schleifen und keine Bedingungen!</div>
+<h3>Wozu es dient (Ziele und Zwecke)</h3>
+<ul class="clean">
+<li><span class="de">Fachliche Anforderungserhebung</span> – Anforderungen aus Sicht von Auftraggeber und Benutzern erfassen.</li>
+<li><span class="de">Systemkontext &amp; Systemgrenze</span> – was gehört zur Entwicklung und wer interagiert von außen.</li>
+<li><span class="de">Kommunikationsbasis</span> – verständlich für Auftraggeber, Analysten und Architekten.</li>
+<li>Abgrenzung: Detaillierte Schritte werden in <b>Aktivitäts-</b> oder <b>Sequenzdiagrammen</b> beschrieben.</li>
+</ul>
+<h3>Die wichtigsten Regeln</h3>
+<ul class="clean">
+<li><b>Akteur</b> = eine <u>Rolle</u>, keine konkrete Person (Kunde, Mitarbeiter, Bank-System, Timer). Primärakteure stehen meist links, Sekundärakteure rechts.</li>
+<li>Alle <b>Use Cases</b> liegen innerhalb des Rechtecks <b>Systemgrenze</b>, alle <b>Akteure</b> außerhalb.</li>
+<li>Name eines Use Case: <b>Substantiv + Verb im Infinitiv</b>: „Gerät reservieren“, „Konto verwalten“.</li>
+<li>Ein Use Case ist eine abgeschlossene, für den Akteur nützliche Aufgabe, nicht „Button klicken“.</li>
+</ul>
+<h3>«include» vs. «extend» – das Wichtigste für die Prüfung</h3>
+<table class="compare">
+<tr><th></th><th>«include»</th><th>«extend»</th></tr>
+<tr><td>Bedeutung</td><td>verpflichtender Teil: wird <b>immer</b> ausgeführt</td><td>optionale/bedingte Erweiterung: <b>kann</b> ausgeführt werden</td></tr>
+<tr><td>Pfeil</td><td>vom <b>Basis</b>-UC → zum eingebundenen UC</td><td>vom <b>erweiternden</b> UC → zum Basis-UC</td></tr>
+<tr><td>Linie</td><td colspan="2">gestrichelte Linie mit offener Pfeilspitze + Stereotyp</td></tr>
+<tr><td>Beispiel</td><td>„Überweisung tätigen“ → «include» → „PIN/TAN prüfen“</td><td>„Quittung drucken“ → «extend» → „Geld abheben“</td></tr>
+<tr><td>Wofür</td><td>gemeinsamen Schritt auslagern (z. B. Anmelden) und wiederverwenden</td><td>Sonderfälle, Zusatzleistungen, Fehlerbehandlung</td></tr>
+</table>
+<div class="tip">💡 Merkhilfe: <b>include</b> – „ich <u>binde</u> ihn in mich ein“ (Pfeil geht von mir weg). <b>extend</b> – „ich <u>erweitere</u> ihn“ (Pfeil von der Erweiterung zur Basis).</div>
+<h3>Condition und Extension Point</h3>
+<p>An ein «extend» kann man eine Notiz mit der Bedingung hängen: <code>Condition: {Gerät beschädigt}</code>. Die <span class="de">Erweiterungsstelle (Extension Point)</span> wird im Basis-UC unter einem Strich notiert (<code>extension points: Schaden erfassen</code>) und zeigt, <i>wo</i> erweitert werden kann.</p>
+<h3>Generalisierung</h3>
+<p>Vererbung zwischen <b>Akteuren</b> (Administrator erbt alle Use Cases vom Benutzer) oder zwischen <b>Use Cases</b> (abstrakt „Zahlung leisten“ → „Kreditkartenzahlung“, „PayPal-Zahlung“). Durchgezogene Linie mit <b>leerem Dreieck zum allgemeinen</b> Element. Ein <span class="de">Abstrakter Use Case</span> wird nicht selbst ausgeführt – ausgeführt wird nur seine konkrete Spezialisierung.</p>`,
+ notation:[
+  {n:'Systemgrenze',d:'Rechteck mit dem Systemnamen. Use Cases innen, Akteure außen.',s:sv(`<rect class="s" x="12" y="8" width="126" height="50"/>${T(18,22,'System',{a:'start',b:1})}`)},
+  {n:'Akteur',d:'Rolle (Mensch, externes System, Timer), die mit dem System interagiert.',s:sv(`${actor(75,12)}${T(75,62,'Kunde',{fs:9})}`)},
+  {n:'Anwendungsfall (Use Case)',d:'Ellipse. Abgeschlossene, nützliche Aufgabe: Substantiv + Verb.',s:sv(`<ellipse class="w" cx="75" cy="33" rx="62" ry="20"/>${T(75,37,'Gerät reservieren')}`)},
+  {n:'Assoziation',d:'Durchgezogene Linie zwischen Akteur und Use Case: ist beteiligt / interagiert.',s:sv(`${actor(20,14,.8)}${L(32,30,80,30)}<ellipse class="w" cx="112" cy="30" rx="32" ry="13"/>${T(112,33,'Anmelden',{fs:8})}`)},
+  {n:'«include»',d:'Verpflichtendes Einbinden. Pfeil vom Basis-UC zum eingebundenen UC.',s:sv(`<ellipse class="w" cx="30" cy="40" rx="26" ry="12"/>${T(30,43,'A',{b:1})}<ellipse class="w" cx="120" cy="40" rx="26" ry="12"/>${T(120,43,'B',{b:1})}${L(57,40,93,40,{d:1,e:'aOpen'})}${T(75,24,'«include»',{fs:9})}`)},
+  {n:'«extend»',d:'Optionale Erweiterung. Pfeil vom erweiternden UC zum Basis-UC.',s:sv(`<ellipse class="w" cx="30" cy="40" rx="26" ry="12"/>${T(30,43,'A',{b:1})}<ellipse class="w" cx="120" cy="40" rx="26" ry="12"/>${T(120,43,'B',{b:1})}${L(93,40,57,40,{d:1,e:'aOpen'})}${T(75,24,'«extend»',{fs:9})}`)},
+  {n:'Generalisierung (UC)',d:'Vererbung: durchgezogene Linie, leeres Dreieck zum allgemeinen Element.',s:sv(`${actor(28,12,.75)}${T(28,58,'Admin',{fs:8})}${actor(122,12,.75)}${T(122,58,'Benutzer',{fs:8})}${L(42,30,106,30,{e:'tri'})}`)},
+  {n:'Condition (Notiz)',d:'Notiz mit der Bedingung für «extend»: Condition: {Bedingung}.',s:sv(`<path class="w" d="M20,8 h96 l12,12 v38 h-108 Z"/>${P('M116,8 v12 h12')}${T(28,28,'Condition:',{a:'start',fs:9})}${T(28,44,'{Platz vermietet}',{a:'start',fs:9})}`)}
+ ],
+ examples:[
+  {img:'uc_techrent',title:'TechRent – Geräteverleihsoftware (Musterlösung)',cap:'Beachte: zwei «include» zu „Anmelden“, zwei «extend» mit Condition und Extension Point.'},
+  {img:'uc_banking',title:'Banking-App',cap:'Das «include» „Ausreichende Mittel prüfen“ wird zweimal wiederverwendet; Generalisierung bei „Zahlung leisten“; Bank ist Sekundärakteur rechts.'},
+  {img:'uc_liegeplatz',title:'Modul für Liegeplatzverwaltung',cap:'Planungsmitarbeiter erbt von Mitarbeiter (Generalisierung zwischen Akteuren).'},
+  {img:'uc_schluessel',title:'Schlüsselsystem',cap:'Administrator ist eine Spezialisierung von Mitarbeiter: kann alles, was ein Mitarbeiter kann, plus „Türschloss programmieren“.'},
+  {img:'uc_rechnung',title:'Modul Rechnungserfassung',cap:'Kette von «extend»: „drucken“ erweitert „ansehen“, und „ansehen“ erweitert „eingeben“.'}
+ ],
+ mistakes:[
+  ['Zu kleinteilig: „Button klicken“, „Textfeld ausfüllen“','Use Case = abgeschlossenes, nützliches Ziel: „Gerät reservieren“'],
+  ['Pfeile als „danach kommt…“ (Workflow)','Das Use-Case-Diagramm zeigt keine Reihenfolge. Für Reihenfolge → Aktivitätsdiagramm'],
+  ['Verdrehte Pfeile bei include/extend','«include» → zum benötigten Teil; «extend» → zurück zum Basis-UC'],
+  ['Akteur innerhalb der Systemgrenze','Akteure stehen immer außerhalb des Rechtecks'],
+  ['Akteur = konkrete Person „Herr Müller“','Akteur = Rolle: „Mitarbeiter“, „Kunde“']
+ ],
+ quiz:[
+  {q:'Was zeigt ein Anwendungsfalldiagramm?',o:['Welche Funktionen das System externen Akteuren bereitstellt','In welcher Reihenfolge die Schritte eines Prozesses ablaufen','Welche Attribute die Klassen haben','Welche Nachrichten Objekte austauschen'],a:0,e:'Das Use-Case-Diagramm beschreibt das funktionale Verhalten („was“) aus Sicht der Akteure – ohne Reihenfolge und ohne Technik.'},
+  {q:'Wohin zeigt der Pfeil bei «include»?',o:['Vom Basis-Use-Case zum eingebundenen Use Case','Vom eingebundenen zum Basis-Use-Case','Vom Akteur zum Use Case','Er hat keine Richtung'],a:0,e:'Zum Beispiel: „Gerät reservieren“ → «include» → „Anmelden“.'},
+  {q:'Wohin zeigt der Pfeil bei «extend»?',o:['Vom erweiternden Use Case zum Basis-Use-Case','Vom Basis-Use-Case zum erweiternden','Immer nach oben','Vom Akteur zum System'],a:0,e:'„Quittung drucken“ → «extend» → „Geld abheben“: Der Pfeil zeigt auf den Basisfall.'},
+  {q:'„Beim Geld abheben kann der Kunde optional eine Quittung drucken.“ Welche Beziehung?',o:['«extend»','«include»','Generalisierung','Assoziation'],a:0,e:'Optional/unter Bedingung → «extend».'},
+  {q:'„Jede Überweisung erfordert immer eine TAN-Prüfung.“ Welche Beziehung?',o:['«include»','«extend»','Generalisierung','Aggregation'],a:0,e:'„immer“ – verpflichtender Teil → «include».'},
+  {q:'„Ein Administrator kann alles, was ein Benutzer kann, und zusätzlich Benutzer verwalten.“ Wie modelliert man das?',o:['Generalisierung: Administrator → Benutzer (Dreieck bei Benutzer)','«include» von Administrator zu Benutzer','Zwei getrennte Assoziationen ohne Beziehung','Administrator innerhalb des Systems'],a:0,e:'Akteur-Generalisierung: Der spezialisierte Akteur erbt alle Use Cases des allgemeinen.'},
+  {q:'Wo stehen die Akteure?',o:['Immer außerhalb der Systemgrenze','Innerhalb des Systems','Beliebig','Nur rechts'],a:0,e:'Akteure sind die äußere Umgebung. Alle Use Cases innen, alle Akteure außen.'},
+  {q:'Welcher Name für einen Use Case ist korrekt?',o:['Gerät reservieren','Reservierung','Button „OK“ klicken','Herr Müller'],a:0,e:'Ein Use Case wird mit Substantiv + Verb im Infinitiv benannt und muss eine abgeschlossene Aufgabe sein.'},
+  {q:'Wer oder was kann ein Akteur sein?',o:['Menschliche Rolle, externes System oder Timer','Nur ein Mensch','Nur eine Klasse im Code','Nur eine Datenbank innerhalb des Systems'],a:0,e:'Akteur = Rolle: Mensch, externes Nachbarsystem oder zeitgesteuerter Impulsgeber.'},
+  {q:'Was ist ein abstrakter Use Case (z. B. „Zahlung leisten“)?',o:['Verallgemeinertes Verhalten, wird selbst nicht ausgeführt; ausgeführt werden die Spezialisierungen','Ein Use Case, den niemand verwendet','Ein Use Case ohne Akteur','Ein Modellierungsfehler'],a:0,e:'Ausgeführt wird die konkrete Spezialisierung: Kreditkartenzahlung oder PayPal-Zahlung.'},
+  {q:'Was kann ein Use-Case-Diagramm NICHT zeigen?',o:['Zeitliche Reihenfolge, Schleifen und Bedingungen','Akteure','Die Systemgrenze','Die Funktionen des Systems'],a:0,e:'Für Reihenfolge/Bedingungen → Aktivitätsdiagramm, für Nachrichten im Zeitverlauf → Sequenzdiagramm.'},
+  {q:'Wie notiert man die Bedingung bei «extend» richtig?',o:['Condition: {Gerät beschädigt}','[Gerät beschädigt]','if Gerät beschädigt','«Gerät beschädigt»'],a:0,e:'Laut Unterlagen: Notiz mit „Condition:“ und der Bedingung in geschweiften Klammern {…}.'}
+ ],
+ tasks:[
+  {t:'TechRent – Anforderungen modellieren',text:`<p>Aus dem Kundengespräch (Herr Müller, TechRent GmbH):</p><ul class="clean"><li>Kunden sollen sich <b>anmelden</b> und verfügbare Geräte <b>suchen</b> können. Gefundene Geräte sollen sie für einen Zeitraum <b>reservieren</b> können.</li><li>Kunden können ihre <b>Reservierungen einsehen</b> und – solange das Gerät noch nicht ausgegeben ist – <b>stornieren</b>.</li><li>Die <b>Ausgabe</b> erfolgt vor Ort durch einen Mitarbeiter, der dabei die <b>Reservierung prüft</b>.</li><li>Die <b>Rückgabe</b> übernimmt ein Mitarbeiter; dabei wird der <b>Gerätezustand geprüft</b>. Ist das Gerät beschädigt, wird es <b>als defekt gekennzeichnet</b>.</li><li>Mitarbeiter können Geräte <b>anlegen</b> und <b>Gerätedaten bearbeiten</b>.</li></ul><p><b>Aufgabe:</b> Zeichne auf Papier ein Anwendungsfalldiagramm (Systemgrenze, Akteure, Use Cases, include/extend mit Condition). Vergleiche danach mit der Lösung.</p>`,sol:`<div class="figure"><img src="${'@@uc_techrent'}" alt="Lösung TechRent"></div><ul class="clean"><li>«include»: „Gerät reservieren“ und „Reservierungen einsehen“ → „Anmelden“; „Gerät ausgeben“ → „Reservierung prüfen“; „Gerät zurücknehmen“ → „Gerätezustand prüfen“ (immer).</li><li>«extend»: „Reservierung stornieren“ → „Reservierungen einsehen“ (Condition {nicht ausgegeben}); „Gerät als defekt kennzeichnen“ → „Gerät zurücknehmen“ (Condition {Gerät beschädigt}).</li></ul>`},
+  {t:'Banking-App lesen',text:`<div class="figure"><img src="${'@@uc_banking'}" alt="Banking-App"></div><p>Beantworte mündlich:</p><ol><li>Was passiert immer bei „Anmelden“?</li><li>Was passiert nur manchmal?</li><li>Warum ist „Ausreichende Mittel prüfen“ ausgelagert?</li><li>Was bedeutet das Dreieck unter „Zahlung leisten“?</li></ol>`,sol:`<ol><li>„Passwort überprüfen“ («include» – immer).</li><li>„Anmeldefehler anzeigen“ («extend» – nur im Fehlerfall).</li><li>Das ist ein gemeinsamer Schritt für „Mittel übertragen“ und „Zahlung leisten“ – er wird über «include» wiederverwendet.</li><li>Generalisierung: „Vom Girokonto bezahlen“ und „Vom Sparguthaben bezahlen“ sind Spezialisierungen von (abstrakt) „Zahlung leisten“.</li></ol>`}
+ ],
+ comp:['… erklären, wofür ein Anwendungsfalldiagramm verwendet wird.','… Akteure aus einer Anforderung erkennen und korrekt darstellen.','… Anwendungsfälle ableiten und sinnvoll benennen.','… die Systemgrenze korrekt darstellen.','… Assoziationen korrekt darstellen.','… «include» und «extend» unterscheiden und sinnvoll einsetzen.','… Generalisierungen erkennen und korrekt darstellen.','… aus einer Kundenanforderung selbstständig ein vollständiges Diagramm erstellen.','… ein Diagramm auf typische Fehler prüfen und verbessern.','… erklären, was ein Anwendungsfalldiagramm nicht darstellen kann.']
+},
+/* ================= KLASSENDIAGRAMM ================= */
+{id:'cl',color:'var(--cl)',de:'Klassendiagramm',en:'Class Diagram',ru:'Class Diagram',
+ type:'Strukturdiagramm',leit:'Wie ist das System statisch aufgebaut?',
+ short:'Klassen, Attribute, Methoden und ihre Beziehungen – die statische Struktur.',
+ theory:`
+<p class="lead">Ein <span class="de">Klassendiagramm</span> beschreibt die <b>statische Struktur</b> eines Systems: welche Klassen es gibt, ihre <span class="de">Attribute</span> und <span class="de">Methoden</span> und wie die Klassen zusammenhängen. Es ist der „Bauplan“ für die Programmierung.</p>
+<div class="q-box"><b>Leitfrage:</b> Wie ist das System aufgebaut (Klassen, Attribute, Methoden, Beziehungen)?<br><b>Achtung:</b> Es zeigt nicht die zeitliche Reihenfolge der Methodenaufrufe.</div>
+<h3>Klasse = Rechteck mit drei Bereichen</h3>
+<ol><li><b>Name</b> (oben, fett)</li><li><b>Attribute</b>: <code>Sichtbarkeit name : Datentyp = Initialwert</code> → <code>- storniert : boolean = false</code></li><li><b>Methoden</b>: <code>Sichtbarkeit name(param : Typ) : Rückgabetyp</code> → <code>+ istVerfuegbar() : boolean</code></li></ol>
+<h3>Sichtbarkeiten (Access Modifiers)</h3>
+<table><tr><th>Zeichen</th><th>Name</th><th>Zugriff</th></tr>
+<tr><td><code>+</code></td><td>public</td><td>von überall</td></tr>
+<tr><td><code>-</code></td><td>private</td><td>nur innerhalb der eigenen Klasse (typisch für Attribute → Kapselung)</td></tr>
+<tr><td><code>#</code></td><td>protected</td><td>Klasse und ihre Unterklassen</td></tr>
+<tr><td><code>~</code></td><td>package</td><td>innerhalb desselben Pakets</td></tr></table>
+<p><b>static</b> (Klassenattribut/-methode) → <u>unterstrichen</u>. <b>abstrakt</b> → <i>kursiv</i> oder <code>«abstract»</code>. <b>Interface</b> → <code>«interface»</code>, nur Methodensignaturen.</p>
+<h3>Beziehungen</h3>
+<table class="compare">
+<tr><th>Beziehung</th><th>Darstellung</th><th>Bedeutung</th><th>Beispiel</th></tr>
+<tr><td>Assoziation</td><td>durchgezogene Linie (Pfeil = Navigierbarkeit)</td><td>„kennt“</td><td>Kunde – Fahrzeug</td></tr>
+<tr><td>Aggregation</td><td>leere Raute ◇ beim Ganzen</td><td>„hat Teile“, das Teil existiert auch allein</td><td>Fuhrpark ◇– Fahrzeug</td></tr>
+<tr><td>Komposition</td><td>gefüllte Raute ◆ beim Ganzen</td><td>„besteht fest aus“, das Teil stirbt mit dem Ganzen</td><td>Haus ◆– Raum</td></tr>
+<tr><td>Generalisierung</td><td>durchgezogene Linie, leeres Dreieck zur Oberklasse</td><td>„ist ein“ (extends)</td><td>Auto → Fahrzeug</td></tr>
+<tr><td>Realisierung</td><td>gestrichelt, leeres Dreieck zum Interface</td><td>„setzt Vorgaben um“ (implements)</td><td>Auto ⇢ «interface» Mietbar</td></tr>
+<tr><td>Abhängigkeit</td><td>gestrichelt mit offener Pfeilspitze</td><td>„verwendet“ kurzzeitig</td><td>Rechnung ⇢ Drucker</td></tr>
+</table>
+<div class="tip">💡 <b>Aggregation vs. Komposition</b> = Frage der Lebensdauer: Lösche ich das Ganze – verschwindet dann auch das Teil? Ja → Komposition (◆). Nein → Aggregation (◇).<br>💡 <b>Generalisierung vs. Realisierung</b>: Ich erbe Struktur und Verhalten (durchgezogen) vs. ich verpflichte mich, die Methoden des Interface umzusetzen (gestrichelt).</div>
+<h3>Multiplizitäten</h3>
+<table><tr><th>Notation</th><th>Bedeutung</th></tr>
+<tr><td><code>1</code></td><td>genau eins (Pflicht)</td></tr>
+<tr><td><code>0..1</code></td><td>null oder eins (optional)</td></tr>
+<tr><td><code>0..*</code> oder <code>*</code></td><td>beliebig viele</td></tr>
+<tr><td><code>1..*</code></td><td>mindestens eins</td></tr>
+<tr><td><code>2..5</code></td><td>konkreter Bereich</td></tr></table>
+<p>So liest man es: „Ein Kunde erstellt <b>0..*</b> Reservierungen, eine Reservierung gehört zu genau <b>1</b> Kunde.“ Die Zahl steht bei der <u>gegenüberliegenden</u> Klasse.</p>`,
+ notation:[
+  {n:'Klasse',d:'Drei Bereiche: Name, Attribute, Methoden.',s:sv(`<rect class="w" x="35" y="4" width="80" height="58"/>${L(35,18,115,18)}${L(35,40,115,40)}${T(75,14,'Kunde',{b:1,fs:9})}${T(39,29,'- name : String',{a:'start',fs:7.5})}${T(39,37,'- email : String',{a:'start',fs:7.5})}${T(39,53,'+ aendern() : void',{a:'start',fs:7.5})}`)},
+  {n:'Sichtbarkeiten',d:'+ public, - private, # protected, ~ package.',s:sv(`${T(20,20,'+ public',{a:'start',fs:11})}${T(85,20,'- private',{a:'start',fs:11})}${T(20,48,'# protected',{a:'start',fs:11})}${T(85,48,'~ package',{a:'start',fs:11})}`)},
+  {n:'Abstrakte Klasse',d:'Name kursiv oder «abstract». Es können keine Objekte erzeugt werden.',s:sv(`<rect class="w" x="35" y="8" width="80" height="50"/>${L(35,30,115,30)}${T(75,18,'«abstract»',{fs:8})}${T(75,27,'Gerät',{b:1,i:1,fs:9})}${T(39,45,'# status : String',{a:'start',fs:7.5})}`)},
+  {n:'Interface',d:'«interface»: nur Methodensignaturen, kein Zustand.',s:sv(`<rect class="w" x="35" y="8" width="80" height="50"/>${L(35,30,115,30)}${T(75,18,'«interface»',{fs:8})}${T(75,27,'Mietbar',{b:1,fs:9})}${T(39,45,'+ mieten() : void',{a:'start',fs:7.5})}`)},
+  {n:'Assoziation',d:'„kennt“. Durchgezogene Linie mit Multiplizitäten.',s:sv(`<rect class="w" x="4" y="22" width="38" height="20"/>${T(23,35,'Kunde',{fs:8})}<rect class="w" x="108" y="22" width="38" height="20"/>${T(127,35,'Auto',{fs:8})}${L(42,32,108,32)}${T(48,27,'1',{fs:8,a:'start'})}${T(102,27,'0..*',{fs:8,a:'end'})}${T(75,46,'leiht',{fs:8})}`)},
+  {n:'Aggregation',d:'Leere Raute beim Ganzen. Das Teil existiert eigenständig.',s:sv(`<rect class="w" x="4" y="22" width="40" height="20"/>${T(24,35,'Fuhrpark',{fs:7.5})}<rect class="w" x="106" y="22" width="40" height="20"/>${T(126,35,'Fahrzeug',{fs:7.5})}${L(44,32,106,32,{s:'dia'})}`)},
+  {n:'Komposition',d:'Gefüllte Raute beim Ganzen. Das Teil stirbt mit dem Ganzen.',s:sv(`<rect class="w" x="4" y="22" width="40" height="20"/>${T(24,35,'Haus',{fs:8})}<rect class="w" x="106" y="22" width="40" height="20"/>${T(126,35,'Raum',{fs:8})}${L(44,32,106,32,{s:'diaF'})}`)},
+  {n:'Generalisierung (Vererbung)',d:'„ist ein“. Durchgezogene Linie, leeres Dreieck zur Oberklasse.',s:sv(`<rect class="w" x="55" y="4" width="40" height="18"/>${T(75,16,'Fahrzeug',{fs:7.5})}<rect class="w" x="55" y="44" width="40" height="18"/>${T(75,56,'Auto',{fs:8})}${L(75,44,75,22,{e:'tri'})}`)},
+  {n:'Realisierung',d:'„implementiert“. Gestrichelt, leeres Dreieck zum Interface.',s:sv(`<rect class="w" x="50" y="4" width="50" height="18"/>${T(75,16,'«if» Mietbar',{fs:7.5})}<rect class="w" x="55" y="44" width="40" height="18"/>${T(75,56,'Auto',{fs:8})}${L(75,44,75,22,{e:'tri',d:1})}`)},
+  {n:'Abhängigkeit (Dependency)',d:'„verwendet“ kurzzeitig (Parameter, lokale Variable). Gestrichelt, offene Pfeilspitze.',s:sv(`<rect class="w" x="4" y="22" width="40" height="20"/>${T(24,35,'Rechnung',{fs:7.5})}<rect class="w" x="106" y="22" width="40" height="20"/>${T(126,35,'Drucker',{fs:7.5})}${L(44,32,106,32,{d:1,e:'aOpen'})}`)}
+ ],
+ examples:[
+  {img:'cl_techrent',title:'TechRent – Klassendiagramm (Musterlösung)',cap:'Laptop und Beamer erben von Gerät. Kunde 1 — 0..* Reservierung / Ausleihe; Gerät 1 — 0..* Reservierung / Ausleihe.'},
+  {img:'cl_yacht',title:'Yachthafen – Einkaufslisten',cap:'Einkaufsliste ◇ Artikel (Aggregation: Der Artikel existiert auch ohne Liste). Kleidung ist ein Artikel (Generalisierung).'}
+ ],
+ mistakes:[
+  ['Raute beim Teil (statt beim Ganzen)','Die Raute ◇/◆ steht immer beim <b>Ganzen</b>'],
+  ['Komposition, obwohl das Teil allein existiert (Kunde ◆ Bestellung)','Das Teil überlebt das Ganze → Aggregation ◇'],
+  ['Vererbungsdreieck bei der Unterklasse','Das Dreieck zeigt auf die <b>Oberklasse</b>'],
+  ['Attribute public: + name','Attribute sind meist private (-), Zugriff über Methoden (Kapselung)'],
+  ['Keine Typen: - name','Vollständige Notation: - name : String ; + stornieren() : void'],
+  ['Versuch, die Reihenfolge von Aufrufen zu zeigen','Reihenfolge → Sequenzdiagramm, Abläufe → Aktivitätsdiagramm']
+ ],
+ quiz:[
+  {q:'Aus welchen drei Bereichen besteht eine Klasse in UML?',o:['Name, Attribute, Methoden','Name, Zustände, Ereignisse','Akteur, Use Case, Systemgrenze','Lebenslinie, Nachricht, Antwort'],a:0,e:'Oben der Name, in der Mitte die Attribute, unten die Methoden.'},
+  {q:'Was bedeutet „#“ vor einem Attribut?',o:['protected','private','public','package'],a:0,e:'# protected: Zugriff in der Klasse und in Unterklassen.'},
+  {q:'Was bedeutet „~“?',o:['package','protected','static','abstract'],a:0,e:'~ package: Zugriff innerhalb desselben Pakets.'},
+  {q:'Wie kennzeichnet man ein static-Attribut?',o:['Unterstrichen','Kursiv','Fett','Mit dem Zeichen *'],a:0,e:'Klassenattribute/-methoden werden unterstrichen: <u>- anzahlKunden : int</u>.'},
+  {q:'Haus und Raum: Wird das Haus gelöscht, verschwinden auch die Räume. Welche Beziehung?',o:['Komposition (◆ bei Haus)','Aggregation (◇ bei Haus)','Generalisierung','Abhängigkeit'],a:0,e:'Die Existenz des Teils hängt vom Ganzen ab → Komposition.'},
+  {q:'Fuhrpark und Fahrzeug: Der Fuhrpark wird aufgelöst, die Fahrzeuge bleiben. Beziehung?',o:['Aggregation (◇ bei Fuhrpark)','Komposition','Realisierung','Assoziation mit 0..0'],a:0,e:'Das Teil kann unabhängig existieren → Aggregation.'},
+  {q:'„Ein Auto ist ein Fahrzeug.“ Welche Beziehung?',o:['Generalisierung','Komposition','Assoziation','Abhängigkeit'],a:0,e:'„ist ein“ = Vererbung, Dreieck bei Fahrzeug.'},
+  {q:'Wie sieht eine Realisierung aus?',o:['Gestrichelt mit leerem Dreieck zum Interface','Durchgezogene Linie mit leerem Dreieck','Gestrichelt mit offener Pfeilspitze','Linie mit gefüllter Raute'],a:0,e:'Gestrichelt + Dreieck = implements.'},
+  {q:'Rechnung verwendet Drucker nur als Methodenparameter. Beziehung?',o:['Abhängigkeit (Dependency)','Komposition','Aggregation','Generalisierung'],a:0,e:'Kurzzeitige Verwendung → gestrichelter Pfeil.'},
+  {q:'Was bedeutet die Multiplizität „0..1“?',o:['Null oder eins (optional)','Genau eins','Mindestens eins','Beliebig viele'],a:0,e:'0..1 — optional.'},
+  {q:'Welche Methodennotation ist nach UML korrekt?',o:['+ stornieren() : void','void stornieren()','stornieren: void +','+ void : stornieren()'],a:0,e:'Sichtbarkeit name(Parameter : Typ) : Rückgabetyp.'},
+  {q:'Welche Attributnotation ist korrekt?',o:['- storniert : boolean = false','boolean storniert = false -','- boolean : storniert','storniert(boolean)'],a:0,e:'Sichtbarkeit name : Datentyp = Initialwert.'},
+  {q:'Was zeigt ein Klassendiagramm NICHT?',o:['Die zeitliche Reihenfolge der Methodenaufrufe','Attribute','Beziehungen zwischen Klassen','Sichtbarkeiten'],a:0,e:'Das Klassendiagramm ist statisch. Dynamik → Sequenz-/Aktivitäts-/Zustandsdiagramm.'},
+  {q:'Kunde 1 —— 0..* Reservierung. Wie liest man das?',o:['Ein Kunde hat 0..* Reservierungen; jede Reservierung gehört zu genau einem Kunde','Jede Reservierung hat 0..* Kunden','Ein Kunde hat genau eine Reservierung','Die Beziehung ist auf beiden Seiten optional'],a:0,e:'Die Multiplizität liest man am gegenüberliegenden Ende.'}
+ ],
+ tasks:[
+  {t:'TechRent – Klassendiagramm erstellen',text:`<p>Aus dem Gespräch:</p><ul class="clean"><li>Kunde: eindeutige Kundennummer, Name, E-Mail; Kontaktdaten sollen geändert werden können.</li><li>Gerät: Inventarnummer, Hersteller, Modell, Status; die Software soll prüfen können, ob ein Gerät verfügbar ist.</li><li>Laptop: zusätzlich Arbeitsspeicher und Displaygröße. Beamer: Lichtstärke (Lumen) und Auflösung. Später weitere Gerätearten möglich.</li><li>Reservierung: welcher Kunde welches Gerät, Beginn und Ende; anlegen und stornieren.</li><li>Ausleihe: Ausleihdatum, geplanter Rückgabetermin, tatsächliches Rückgabedatum.</li><li>Ein Kunde kann mehrere Reservierungen/Ausleihen haben; ein Gerät kann mehrfach reserviert/ausgeliehen werden; eine Reservierung/Ausleihe bezieht sich auf genau einen Kunden und ein Gerät.</li></ul><p><b>Aufgabe:</b> Klassen, Attribute mit Typen und Sichtbarkeit, Methoden, Beziehungen und Multiplizitäten.</p>`,sol:`<div class="figure"><img src="${'@@cl_techrent'}" alt="Lösung"></div><ul class="clean"><li>Gerät ist die Oberklasse (kann abstrakt sein), Laptop/Beamer – Generalisierung.</li><li>Kunde 1 — 0..* Reservierung, Gerät 1 — 0..* Reservierung (dasselbe für Ausleihe).</li><li>tatsaechlichesRueckgabedatum ist faktisch [0..1] – solange das Gerät nicht zurückgegeben wurde.</li></ul>`}
+ ],
+ comp:['… erklären, wofür ein Klassendiagramm verwendet wird.','… Klasse mit Name, Attributen und Methoden darstellen.','… Attribute und Methoden mit richtiger UML-Syntax darstellen.','… Sichtbarkeiten (+, -, #, ~) unterscheiden.','… Assoziation, Aggregation und Komposition unterscheiden.','… Generalisierung erkennen und darstellen.','… Multiplizitäten angeben.','… abstrakte Klassen und Interfaces darstellen.','… Realisierung und Abhängigkeit unterscheiden.','… erklären, was ein Klassendiagramm nicht darstellen kann.']
+},
+/* ================= ZUSTANDSDIAGRAMM ================= */
+{id:'st',color:'var(--st)',de:'Zustandsdiagramm',en:'State Machine Diagram',ru:'State Machine Diagram',
+ type:'Verhaltensdiagramm',leit:'Welche Zustände kann EIN Objekt annehmen und wodurch wechselt es?',
+ short:'Lebenszyklus eines Objekts: Zustände und Übergänge durch Ereignisse.',
+ theory:`
+<p class="lead">Ein <span class="de">Zustandsdiagramm</span> beschreibt das Verhalten <b>eines einzelnen Objekts</b> (oder Systems) über seinen Lebenszyklus: welche <span class="de">Zustände</span> möglich sind, welche <span class="de">Ereignisse</span> Übergänge auslösen und was dabei ausgeführt wird (intra-object behavior).</p>
+<div class="q-box"><b>Leitfrage:</b> In welchen Zuständen kann sich ein Objekt befinden und wodurch wechselt es den Zustand?<br><b>Nicht verwechseln:</b> Zusammenspiel mehrerer Objekte im Zeitverlauf → Sequenzdiagramm.</div>
+<h3>Elemente</h3>
+<ul class="clean">
+<li><b>Zustand</b> – Rechteck mit abgerundeten Ecken. Er ist eine <u>stabile Situation</u> über eine gewisse Zeit: „verfügbar“, „fahrbereit“, „in Wartung“ – keine Aktion („Auto starten“ ✗).</li>
+<li><b>Startzustand</b> – gefüllter Kreis ●. <b>Endzustand</b> – Kreis mit Punkt ◉ (hat keine ausgehenden Übergänge, ist nicht immer nötig).</li>
+<li><b>Transition</b> – Pfeil vom Ausgangs- zum Zielzustand.</li>
+</ul>
+<h3>Beschriftung eines Übergangs</h3>
+<div class="q-box" style="font-size:19px;text-align:center"><code>Ereignis [Guard] / Effekt</code></div>
+<p>Beispiel: <code>losfahren [Tankfüllstand &gt; 0] / Fahrtbeginn speichern</code> – das Ereignis „losfahren“ löst den Übergang nur aus, wenn die Bedingung wahr ist; beim Übergang wird der Effekt ausgeführt.</p>
+<h3>Interne Aktivitäten</h3>
+<table><tr><th>Notation</th><th>Wann</th><th>Beispiel</th></tr>
+<tr><td><code>entry / …</code></td><td>beim Betreten des Zustands</td><td>entry / Bordcomputer aktivieren</td></tr>
+<tr><td><code>do / …</code></td><td>solange das Objekt im Zustand ist</td><td>do / Geschwindigkeit überwachen</td></tr>
+<tr><td><code>exit / …</code></td><td>beim Verlassen</td><td>exit / Fahrtdaten speichern</td></tr></table>
+<h3>Ereignisarten</h3>
+<table><tr><th>Art</th><th>Beispiel</th></tr>
+<tr><td>Call-Ereignis (Aufruf einer Operation)</td><td><code>motorStarten()</code></td></tr>
+<tr><td>Signalereignis</td><td><code>WarnsignalEmpfangen</code></td></tr>
+<tr><td>Zeitereignis</td><td><code>after(24h)</code>, <code>at(18:00)</code></td></tr>
+<tr><td>Änderungsereignis</td><td><code>when(tankfüllstand = 0)</code></td></tr>
+<tr><td>Completion Event</td><td>Übergang ohne explizites Ereignis, sobald die Aktivität abgeschlossen ist</td></tr></table>
+<h3>Außerdem wichtig</h3>
+<ul class="clean">
+<li><b>Guards</b> bei demselben Ereignis müssen eindeutig sein: <code>[Tank &gt; 0]</code> / <code>[Tank = 0]</code> oder <code>[else]</code>.</li>
+<li><b>Entscheidungsknoten</b> (kleine Raute) – Verzweigung anhand von Guards.</li>
+<li><b>Selbsttransition</b>: von einem Zustand in denselben Zustand. Der Zustand wird formal verlassen → exit und entry werden erneut ausgeführt (anders als bei internem Verhalten).</li>
+<li>Ein <b>Zusammengesetzter Zustand</b> (Composite State) enthält Unterzustände und einen eigenen inneren Startzustand.</li>
+<li>Bezug zum Klassendiagramm: Ein Zustand ist oft der Wert eines Attributs (<code>status</code>), ein Übergang oft der Aufruf einer Operation.</li>
+</ul>`,
+ notation:[
+  {n:'Zustand',d:'Abgerundetes Rechteck. Stabile Situation eines Objekts.',s:sv(state(35,18,80,30,'fahrbereit',11))},
+  {n:'Startzustand',d:'Gefüllter Kreis. Von hier geht der Übergang in den ersten Zustand.',s:sv(`${start(40,33,8)}${L(48,33,78,33,{e:'aOpen'})}${state(80,20,58,26,'aus',9)}`)},
+  {n:'Endzustand',d:'Kreis mit gefülltem innerem Kreis. Keine ausgehenden Übergänge.',s:sv(`${state(12,20,58,26,'gelöscht',9)}${L(70,33,104,33,{e:'aOpen'})}${fin(115,33)}`)},
+  {n:'Transition',d:'Ereignis [Guard] / Effekt',s:sv(`${state(4,30,44,24,'A',10)}${state(102,30,44,24,'B',10)}${L(48,42,102,42,{e:'aOpen'})}${T(75,16,'ereignis [guard]',{fs:8.5})}${T(75,27,'/ effekt',{fs:8.5})}`)},
+  {n:'Interne Aktivitäten',d:'entry / do / exit innerhalb des Zustands.',s:sv(`<rect class="w" x="30" y="2" width="90" height="62" rx="9"/>${T(75,14,'unterwegs',{b:1,fs:9})}${L(30,19,120,19)}${T(36,31,'entry / Licht an',{a:'start',fs:8})}${T(36,43,'do / Tempo messen',{a:'start',fs:8})}${T(36,55,'exit / speichern',{a:'start',fs:8})}`)},
+  {n:'Entscheidung (Guard)',d:'Raute: weiter entlang der erfüllten Bedingung.',s:sv(`${L(10,33,52,33,{e:'aOpen'})}${dmd(62,33)}${P('M71,33 H95 V14 H112',{e:'aOpen'})}${P('M71,33 H95 V52 H112',{e:'aOpen'})}${T(100,10,'[x > 0]',{fs:8,a:'start'})}${T(100,64,'[else]',{fs:8,a:'start'})}`)},
+  {n:'Selbsttransition',d:'Von einem Zustand in denselben: exit + entry erneut.',s:sv(`${state(40,30,70,28,'geöffnet',10)}${P('M60,30 C55,4 95,4 90,30',{e:'aOpen'})}${T(118,14,'lesen',{fs:8})}`)},
+  {n:'Zusammengesetzter Zustand',d:'Zustand mit Unterzuständen und innerem Start.',s:sv(`<rect class="w" x="6" y="4" width="138" height="58" rx="10"/>${T(14,15,'in Betrieb',{a:'start',fs:8.5,b:1})}${start(20,40,4)}${L(24,40,36,40,{e:'aOpen'})}${state(38,30,40,20,'Leerlauf',7.5)}${L(78,40,94,40,{e:'aOpen'})}${state(96,30,40,20,'Fahrt',7.5)}`)}
+ ],
+ examples:[],
+ bigsvg:'stGeraet',
+ mistakes:[
+  ['Aktion als Zustand: „Auto starten“','Zustand = Situation: „fahrbereit“. Aktion → Ereignis am Übergang'],
+  ['Prüfung als Zustand: „Tank gefüllt?“','Prüfung → Guard: [tankfüllstand > 0]'],
+  ['Pfeile ohne Ereignis','Ereignis angeben (und bei Bedarf einen Guard)'],
+  ['Zustände verschiedener Objekte vermischt','Zuerst klären: Um welches EINE Objekt bzw. welche Klasse geht es'],
+  ['Als allgemeinen Ablauf mit Beteiligten verwenden','Für Prozesse → Aktivitätsdiagramm, für Kommunikation → Sequenzdiagramm'],
+  ['Mehrdeutige Guards [x>0] und [x>=0]','Guards ohne Überschneidung, bei Bedarf [else]']
+ ],
+ quiz:[
+  {q:'Was beschreibt ein Zustandsdiagramm?',o:['Den Lebenszyklus eines Objekts: Zustände und Übergänge','Den Nachrichtenaustausch zwischen Objekten','Klassen und Beziehungen','Die Funktionen des Systems für Akteure'],a:0,e:'Intra-object behavior: Verhalten innerhalb eines einzelnen Objekts.'},
+  {q:'Korrekte Beschriftung eines Übergangs:',o:['Ereignis [Guard] / Effekt','[Ereignis] Guard / Effekt','Effekt / Ereignis [Guard]','Guard : Ereignis -> Effekt'],a:0,e:'Zum Beispiel: losfahren [Tank > 0] / Fahrtbeginn speichern.'},
+  {q:'Wie sieht der Startzustand aus?',o:['Gefüllter schwarzer Kreis','Kreis mit Punkt in der Mitte','Raute','Schwarzer Balken'],a:0,e:'● = Start; ◉ = Ende.'},
+  {q:'Was davon ist ein guter Name für einen Zustand?',o:['in Wartung','Gerät reparieren','Ist das Gerät defekt?','reparieren()'],a:0,e:'Ein Zustand ist eine stabile Situation. Aktionen sind Ereignisse/Effekte, Fragen sind Guards.'},
+  {q:'Wann wird „exit / Fahrtdaten speichern“ ausgeführt?',o:['Beim Verlassen des Zustands','Beim Betreten','Die ganze Zeit, solange der Zustand aktiv ist','Bei einer Selbsttransition nie'],a:0,e:'entry = Betreten, do = solange aktiv, exit = Verlassen.'},
+  {q:'Was passiert bei einer Selbsttransition?',o:['Der Zustand wird verlassen und neu betreten (exit und entry werden ausgeführt)','Es wird nichts ausgeführt','Das Objekt wird zerstört','Das ist dasselbe wie do/'],a:0,e:'Unterschied zum internen Verhalten: Der Zustand wird formal verlassen.'},
+  {q:'„after(24h)“ ist…',o:['Zeitereignis','Signalereignis','Änderungsereignis','Guard'],a:0,e:'Zeitereignis: after(…) oder at(…).'},
+  {q:'„when(tankfüllstand = 0)“ ist…',o:['Änderungsereignis','Zeitereignis','Call-Ereignis','Effekt'],a:0,e:'Löst aus, sobald die Bedingung wahr wird.'},
+  {q:'Wo wird ein Guard notiert?',o:['In eckigen Klammern [ ]','In geschweiften Klammern { }','Nach dem /','In «»'],a:0,e:'[Tankfüllstand > 0].'},
+  {q:'Ist ein Endzustand Pflicht?',o:['Nein – bleibt das Objekt im System, geht es auch ohne','Ja, immer','Ja, und es müssen zwei sein','Nur im Composite State'],a:0,e:'Laut Unterlagen: Nicht jedes Modell braucht einen Endzustand.'},
+  {q:'TechRent: Gerät „ausgeliehen“, bei der Rückgabe wird ein Schaden festgestellt. Wohin führt der Übergang?',o:['zurückgeben [Schaden festgestellt] → defekt','zurückgeben → verfügbar','ausgeben → reserviert','stornieren → defekt'],a:0,e:'Ein beschädigtes Gerät darf nicht wieder verliehen werden: defekt → in Wartung → verfügbar.'},
+  {q:'Wie ergänzt das Zustandsdiagramm das Klassendiagramm?',o:['Es zeigt, wie sich das Attribut status einer Instanz im Zeitverlauf ändert','Es fügt neue Klassen hinzu','Es zeigt Akteure','Es ersetzt die Methoden'],a:0,e:'Klassendiagramm = Statik (es gibt status), Zustandsdiagramm = welche Werte und Übergänge zulässig sind.'}
+ ],
+ tasks:[
+  {t:'TechRent – Zustände eines Geräts',text:`<p>Herr Müller: „Neues Gerät ist nach Freigabe <b>verfügbar</b>. Reserviert ein Kunde es, gilt es als <b>reserviert</b>. Wird es ausgegeben, ist es <b>ausgeliehen</b>. Ordnungsgemäß zurückgegeben → wieder verfügbar. Bei Schaden → <b>defekt</b>, dann zur Reparatur → <b>in Wartung</b>. Erst nach abgeschlossener Reparatur und Prüfung wieder verfügbar.“ (Reservierung kann auch storniert werden.)</p><p><b>Aufgabe:</b> Zustandsdiagramm für ein Gerät.</p>`,sol:`@@SVG:stGeraet`},
+  {t:'Roboter (aus 05_LAB)',text:`<ul class="clean"><li>Nach dem Einschalten → Initialisierung.</li><li>Danach Self-Check: OK → Stand-By, sonst → Error (bis Abschalten).</li><li>Stand-By: Auftrag erhalten → In Arbeit; fertig → zurück Stand-By.</li><li>Fehler während Auftrag → Error.</li><li>Aus Stand-By und Error: abschalten → Ende.</li></ul>`,sol:`<table><tr><th>Von</th><th>Transition</th><th>Nach</th></tr><tr><td>●</td><td>einschalten</td><td>Initialisierung</td></tr><tr><td>Initialisierung</td><td>Self-Check [OK]</td><td>Stand-By</td></tr><tr><td>Initialisierung</td><td>Self-Check [nicht OK] / [else]</td><td>Error</td></tr><tr><td>Stand-By</td><td>Auftrag erhalten</td><td>In Arbeit</td></tr><tr><td>In Arbeit</td><td>Auftrag erledigt</td><td>Stand-By</td></tr><tr><td>In Arbeit</td><td>Fehler aufgetreten / Abarbeitung anhalten</td><td>Error</td></tr><tr><td>Stand-By</td><td>abschalten</td><td>◉</td></tr><tr><td>Error</td><td>abschalten</td><td>◉</td></tr></table><p>Statt zweier Übergänge aus Initialisierung kann man einen Entscheidungsknoten (Raute) mit den Guards [OK] / [else] setzen.</p>`},
+  {t:'Datei (aus 05_LAB)',text:`<p>„Nach dem Anlegen muss eine Datei zum Lesen bzw. Schreiben geöffnet werden. Soll geschrieben werden → Status <b>entsperrt</b>. Beim Lesen gilt sie nur als <b>geöffnet</b>. Lesen/Schreiben kann wiederholt werden, bis sie geschlossen wird; dabei bleibt der Status bestehen. Eine geschlossene Datei kann gelöscht werden.“</p>`,sol:`<table><tr><th>Von</th><th>Transition</th><th>Nach</th></tr><tr><td>●</td><td>anlegen</td><td>angelegt / geschlossen</td></tr><tr><td>geschlossen</td><td>öffnen [lesen]</td><td>geöffnet</td></tr><tr><td>geschlossen</td><td>öffnen [schreiben]</td><td>entsperrt</td></tr><tr><td>geöffnet</td><td>lesen (Selbsttransition)</td><td>geöffnet</td></tr><tr><td>entsperrt</td><td>schreiben (Selbsttransition)</td><td>entsperrt</td></tr><tr><td>geöffnet / entsperrt</td><td>schließen</td><td>geschlossen</td></tr><tr><td>geschlossen</td><td>löschen</td><td>◉</td></tr></table><p>Der Kernpunkt: Erneutes Lesen/Schreiben ist eine <b>Selbsttransition</b> (der Status ändert sich nicht).</p>`}
+ ],
+ comp:['… erklären, welche Frage ein Zustandsdiagramm beantwortet.','… Zustände aus einer Beschreibung ableiten und sinnvoll benennen.','… Start- und Endzustand korrekt einsetzen.','… Transitionen mit Ereignis [Guard] / Effekt beschriften.','… entry/do/exit-Aktivitäten verwenden.','… Selbsttransition und interne Aktivität unterscheiden.','… zusammengesetzte Zustände lesen.','… erklären, was ein Zustandsdiagramm nicht darstellen kann.']
+},
+/* ================= AKTIVITÄTSDIAGRAMM ================= */
+{id:'ac',color:'var(--ac)',de:'Aktivitätsdiagramm',en:'Activity Diagram',ru:'Activity Diagram',
+ type:'Verhaltensdiagramm',leit:'Wie läuft ein Prozess Schritt für Schritt ab?',
+ short:'Ablauf Schritt für Schritt: Aktionen, Entscheidungen, Schleifen, Parallelität, Swimlanes.',
+ theory:`
+<p class="lead">Ein <span class="de">Aktivitätsdiagramm</span> beschreibt einen <b>Ablauf Schritt für Schritt</b>: welche <span class="de">Aktionen</span> ausgeführt werden, in welcher Reihenfolge, wo verzweigt, zusammengeführt, wiederholt oder parallel gearbeitet wird. Geeignet für Use Cases, Programmlogik, Services und Geschäftsprozesse.</p>
+<div class="q-box"><b>Leitfrage:</b> Wie läuft ein Prozess ab? (Wer macht was – mit Swimlanes.)</div>
+<h3>Knoten und Kanten</h3>
+<ul class="clean">
+<li><b>Aktion</b> – abgerundetes Rechteck, Name <b>Verb + Objekt</b>: „Verfügbarkeit prüfen“.</li>
+<li><b>Initialknoten</b> ● – Start. <b>Aktivitätsendknoten</b> ◉ – beendet die <u>gesamte</u> Aktivität (auch alle parallelen Pfade). <b>Ablaufendknoten</b> ⊗ – beendet <u>nur den eigenen Pfad</u>.</li>
+<li><b>Kontrollfluss</b> – Pfeil, Reihenfolge der Ausführung.</li>
+</ul>
+<h3>Decision/Merge vs. Fork/Join – der wichtigste Unterschied</h3>
+<table class="compare">
+<tr><th></th><th>Art</th><th>Wirkung</th></tr>
+<tr><td>Decision</td><td>Raute, 1 Eingang, n Ausgänge mit [Guards]</td><td>wählt <b>genau einen</b> alternativen Pfad</td></tr>
+<tr><td>Merge</td><td>Raute, n Eingänge, 1 Ausgang</td><td>führt Alternativen zusammen, <b>wartet nicht</b></td></tr>
+<tr><td>Fork</td><td>schwarzer Balken, 1 Eingang, n Ausgänge</td><td>startet die Pfade <b>gleichzeitig</b></td></tr>
+<tr><td>Join</td><td>schwarzer Balken, n Eingänge, 1 Ausgang</td><td><b>wartet auf alle</b> eingehenden Pfade</td></tr>
+</table>
+<div class="tip">💡 Raute = „oder“ (Alternativen). Balken = „und“ (Parallelität).</div>
+<h3>Token-Konzept</h3>
+<p>Stell dir eine unsichtbare Marke (<span class="de">Token</span>) vor, die durch das Diagramm läuft. Eine Aktion wird ausgeführt, sobald das Token ankommt; danach wird es weitergegeben. Ein Fork teilt das Token in mehrere, ein Join wartet auf alle.</p>
+<h3>Schleife</h3>
+<p>Schleife = Rückkante zu einem früheren Merge: „Solange Eingaben ungültig → Angaben korrigieren → erneut absenden“.</p>
+<h3>Objektfluss</h3>
+<p><span class="de">Objektknoten</span> (normales Rechteck, z. B. „Reservierung“) zeigen Daten zwischen Aktionen. <span class="de">Pins</span> sind kleine Quadrate an einer Aktion (Eingang/Ausgang). <span class="de">Central Buffer</span> = temporäre Daten, <span class="de">Data Store</span> = dauerhafte Daten (DB).</p>
+<h3>Partitionen (Swimlanes)</h3>
+<p>Sie teilen Aktionen nach Verantwortung auf: Frontend, Backend/API, Datenbank, externer Dienst. Sie ändern den Ablauf nicht, sondern beantworten nur die Frage „Wer führt aus?“. Verwende nicht zu viele Bahnen.</p>
+<h3>Abgrenzung</h3>
+<p>Aktivität: „Wie läuft der Prozess ab?“ · Zustand: „Welche Zustände hat ein Objekt?“ · Sequenz: „Wer kommuniziert wann mit wem?“</p>`,
+ notation:[
+  {n:'Aktion',d:'Abgerundetes Rechteck: Verb + Objekt.',s:sv(action(25,20,100,28,'Eingaben prüfen',10))},
+  {n:'Initialknoten',d:'Start der Aktivität, keine eingehenden Kanten.',s:sv(`${start(40,33,8)}${L(48,33,80,33,{e:'aOpen'})}${action(82,22,58,24,'Aktion',9)}`)},
+  {n:'Aktivitätsendknoten',d:'Beendet die GESAMTE Aktivität, auch parallele Pfade.',s:sv(`${action(10,22,58,24,'Aktion',9)}${L(68,34,104,34,{e:'aOpen'})}${fin(115,34)}`)},
+  {n:'Ablaufendknoten',d:'Beendet nur den aktuellen Pfad; die anderen laufen weiter.',s:sv(`${action(10,22,58,24,'Aktion',9)}${L(68,34,104,34,{e:'aOpen'})}<circle class="w" cx="115" cy="34" r="9"/>${L(109,28,121,40)}${L(121,28,109,40)}`)},
+  {n:'Entscheidung (Decision)',d:'1 Eingang, mehrere Ausgänge mit [Guards]. Es wird EIN Pfad gewählt.',s:sv(`${L(10,33,50,33,{e:'aOpen'})}${dmd(60,33,10)}${P('M70,33 H92 V14 H118',{e:'aOpen'})}${P('M70,33 H92 V52 H118',{e:'aOpen'})}${T(96,10,'[verfügbar]',{fs:7.5,a:'start'})}${T(96,64,'[else]',{fs:7.5,a:'start'})}`)},
+  {n:'Zusammenführung (Merge)',d:'Mehrere Eingänge, 1 Ausgang. Wartet nicht!',s:sv(`${P('M20,14 H55 V23',{e:'aOpen'})}${P('M20,52 H55 V43',{e:'aOpen'})}${dmd(55,33,10)}${L(65,33,120,33,{e:'aOpen'})}`)},
+  {n:'Fork (Parallelisierung)',d:'Schwarzer Balken: 1 Eingang, mehrere gleichzeitige Ausgänge.',s:sv(`${L(75,4,75,22,{e:'aOpen'})}<rect class="f" x="30" y="24" width="90" height="5"/>${L(50,29,50,58,{e:'aOpen'})}${L(100,29,100,58,{e:'aOpen'})}`)},
+  {n:'Join (Synchronisation)',d:'Schwarzer Balken: wartet auf ALLE eingehenden Pfade.',s:sv(`${L(50,4,50,34,{e:'aOpen'})}${L(100,4,100,34,{e:'aOpen'})}<rect class="f" x="30" y="36" width="90" height="5"/>${L(75,41,75,62,{e:'aOpen'})}`)},
+  {n:'Partition / Swimlane',d:'Bahnen nach Verantwortung (Frontend, Backend…).',s:sv(`<rect class="s" x="6" y="4" width="138" height="58"/>${L(75,4,75,62)}${L(6,17,144,17)}${T(40,14,'Frontend',{fs:8.5,b:1})}${T(110,14,'Backend',{fs:8.5,b:1})}${action(14,30,52,20,'senden',8)}${L(66,40,82,40,{e:'aOpen'})}${action(84,30,52,20,'prüfen',8)}`)},
+  {n:'Objektknoten',d:'Rechteck mit Daten zwischen Aktionen (Objektfluss).',s:sv(`${action(2,22,40,22,'A',9)}${L(42,33,56,33,{e:'aOpen'})}<rect class="w" x="57" y="22" width="40" height="22"/>${T(77,36,'Daten',{fs:8.5})}${L(97,33,110,33,{e:'aOpen'})}${action(110,22,38,22,'B',9)}`)}
+ ],
+ examples:[
+  {img:'ac_techrent',title:'Aktivität „Gerät reservieren“ (Musterlösung TechRent)',cap:'Zwei Merge-Knoten für Schleifen (ungültige Eingabe / Gerät nicht verfügbar), zwei Decisions mit Guards, Fork/Join für das parallele Senden von Bestätigung und E-Mail, 4 Swimlanes.'}
+ ],
+ mistakes:[
+  ['Raute für parallele Schritte','Parallel → Fork/Join (Balken). Raute nur für Alternativen'],
+  ['Join nach Alternativen (Decision)','Nach einer Decision führt ein Merge zusammen – ein Join würde ewig warten'],
+  ['Guards überschneiden sich oder fehlen','Eindeutige Guards: [verfügbar] / [nicht verfügbar] oder [else]'],
+  ['Aktivitätsendknoten in einem der parallelen Pfade','Sollen die anderen Pfade weiterlaufen → Ablaufendknoten ⊗'],
+  ['Aktion ohne Verb: „Reservierung“','Verb + Objekt: „Reservierung speichern“'],
+  ['Zu viele Swimlanes und Kleinstschritte','Nur relevante Schritte; Details in eine eigene Aktivität']
+ ],
+ quiz:[
+  {q:'Welche Frage beantwortet ein Aktivitätsdiagramm?',o:['Wie läuft ein Prozess Schritt für Schritt ab?','Welche Zustände hat ein Objekt?','Welche Klassen gibt es im System?','Welche Funktionen haben die Akteure?'],a:0,e:'Wie läuft ein Prozess ab? – Aktionen, Entscheidungen, Schleifen, Parallelität.'},
+  {q:'Worin unterscheidet sich Merge von Join?',o:['Merge führt Alternativen zusammen und wartet nicht; Join wartet auf alle parallelen Pfade','Gar nicht','Merge wartet auf alle Pfade, Join nicht','Join ist eine Raute'],a:0,e:'Merge = Raute, „oder“. Join = Balken, „und“.'},
+  {q:'Wie sieht ein Fork aus?',o:['Schwarzer Balken mit einem Eingang und mehreren Ausgängen','Raute mit Guards','Kreis mit Kreuz','Abgerundetes Rechteck'],a:0,e:'Ein Fork startet mehrere Pfade gleichzeitig.'},
+  {q:'Worin unterscheidet sich der Ablaufendknoten ⊗ vom Aktivitätsendknoten ◉?',o:['⊗ beendet nur den eigenen Pfad, ◉ die gesamte Aktivität','⊗ beendet alles, ◉ nur den Pfad','Beides ist dasselbe','⊗ ist der Start'],a:0,e:'◉ stoppt auch alle parallelen Pfade.'},
+  {q:'Was steht an den Ausgängen einer Decision?',o:['Guards in eckigen Klammern','Namen der Swimlanes','Multiplizitäten','Stereotypen «»'],a:0,e:'[Gerät verfügbar] / [Gerät nicht verfügbar] oder [else].'},
+  {q:'Ändern Swimlanes den Kontrollfluss?',o:['Nein, sie zeigen nur, wer die Aktion ausführt','Ja, jede Bahn ist ein eigener Ablauf','Ja, sie ersetzen den Fork','Nur im Sequenzdiagramm'],a:0,e:'Eine Partition ergänzt die Information über die Verantwortung.'},
+  {q:'Wie modelliert man die Schleife „Eingabe solange ungültig wiederholen“?',o:['Rückkante zu einem früheren Merge-Knoten','Über einen Fork','Über einen Endknoten','Über eine Selbsttransition'],a:0,e:'Decision [ungültig] → … → zurück zum Merge vor der Eingabe.'},
+  {q:'Welcher Aktionsname ist besser?',o:['Verfügbarkeit prüfen','Verfügbarkeit','Prüfung?','Datenbank'],a:0,e:'Verb + Objekt.'},
+  {q:'Nach erfolgreicher Buchung gleichzeitig: Bestätigung anzeigen und E-Mail senden. Was verwendet man?',o:['Fork und Join','Decision und Merge','Zwei Endknoten','alt-Fragment'],a:0,e:'Gleichzeitigkeit → Fork, Synchronisation → Join (im Sequenzdiagramm wäre es par).'},
+  {q:'Was stellt ein Token dar?',o:['Eine unsichtbare Ausführungsmarke, die über die Kanten läuft','Ein Objekt in der Datenbank','Das Passwort des Benutzers','Einen Stereotyp'],a:0,e:'Tokens werden nicht gezeichnet, sie sind ein Ausführungsmodell.'},
+  {q:'Ein Data Store im Aktivitätsdiagramm ist…',o:['Ein dauerhafter Datenspeicher (z. B. DB)','Ein temporärer Puffer','Swimlane','Ein Startknoten'],a:0,e:'Central Buffer = temporär, Data Store = dauerhaft.'},
+  {q:'TechRent: Das Backend hat die Eingabe geprüft. Wie modelliert man „Angaben fehlen“ vs. „Angaben ok“?',o:['Decision mit [Angaben fehlen oder Zeitraum ungültig] / [Angaben vollständig und Zeitraum gültig]','Fork','Zwei Initialknoten','Join'],a:0,e:'Alternativen → Decision mit sich gegenseitig ausschließenden Guards.'}
+ ],
+ tasks:[
+  {t:'TechRent – Aktivität „Gerät reservieren“',text:`<p>Kunde wählt im <b>Frontend</b> ein Gerät, gibt Zeitraum ein und sendet die Anfrage. Das <b>Backend</b> prüft die Eingaben: fehlen Angaben oder ist der Zeitraum ungültig → Fehlermeldung im Frontend, Kunde korrigiert und sendet erneut. Sonst fragt das Backend die <b>Datenbank</b> nach Verfügbarkeit. Nicht verfügbar → Antwort erzeugen, Frontend zeigt Meldung, Kunde wählt anderes Gerät/Zeitraum. Verfügbar → Reservierung anlegen, Datenbank speichert. Danach <b>parallel</b>: Erfolgsantwort ans Frontend (Bestätigung anzeigen) und Versandauftrag an den <b>Benachrichtigungsdienst</b> (E-Mail). Fertig, wenn beide Teilabläufe beendet sind.</p><p><b>Aufgabe:</b> Aktivitätsdiagramm mit 4 Swimlanes.</p>`,sol:`<div class="figure"><img src="${'@@ac_techrent'}" alt="Lösung"></div>`}
+ ],
+ comp:['… erklären, welche Frage ein Aktivitätsdiagramm beantwortet.','… Aktionen benennen und darstellen.','… Start-, Aktivitätsend- und Ablaufendknoten unterscheiden.','… Decision/Merge mit eindeutigen Guards einsetzen.','… Fork/Join für Parallelität einsetzen.','… Schleifen modellieren.','… Swimlanes für Verantwortlichkeiten nutzen.','… Objektfluss/Objektknoten verstehen.']
+},
+/* ================= SEQUENZDIAGRAMM ================= */
+{id:'sq',color:'var(--sq)',de:'Sequenzdiagramm',en:'Sequence Diagram',ru:'Sequence Diagram',
+ type:'Verhaltensdiagramm (Interaktion)',leit:'Wer kommuniziert wann mit wem?',
+ short:'Nachrichten zwischen Beteiligten im Zeitverlauf: von oben nach unten.',
+ theory:`
+<p class="lead">Ein <span class="de">Sequenzdiagramm</span> zeigt die <b>Interaktion im Zeitverlauf</b>: welche Beteiligten (<span class="de">Interaktionspartner</span>) <span class="de">Nachrichten</span> austauschen und in welcher Reihenfolge – vom Aufruf bis zur Antwort.</p>
+<div class="q-box"><b>Leitfrage:</b> Wer kommuniziert wann mit wem? Die Zeit läuft <b>von oben nach unten</b>; die horizontale Position hat keine Bedeutung.</div>
+<h3>Grundlagen</h3>
+<ul class="clean">
+<li><b>Lebenslinie</b>: Kopf (Rechteck <code>:Backend</code>, Name unterstrichen) + gestrichelte Linie nach unten. Auch ein Akteur hat eine Lebenslinie.</li>
+<li><b>Ausführungsspezifikation (Aktivierung)</b>: schmaler Balken auf der Linie – der Beteiligte arbeitet gerade.</li>
+<li>Der Pfeil zeigt auf den <b>Empfänger</b>. Eine Nachricht ist meist der Aufruf einer Methode des Empfängers (Bezug zum Klassendiagramm!).</li>
+<li>Rahmen der gesamten Interaktion: <code>sd Name</code> im Fünfeck links oben.</li>
+</ul>
+<h3>Nachrichtenarten</h3>
+<table class="compare">
+<tr><th>Nachricht</th><th>Art</th><th>Bedeutung</th></tr>
+<tr><td>synchron</td><td>durchgezogene Linie, <b>gefüllte</b> Pfeilspitze ▶</td><td>der Sender <b>wartet</b> auf das Ende (Methodenaufruf)</td></tr>
+<tr><td>asynchron</td><td>durchgezogene Linie, <b>offene</b> Pfeilspitze &gt;</td><td>der Sender <b>wartet nicht</b> (Event, Queue, Mail-Dienst)</td></tr>
+<tr><td>Antwort (Reply)</td><td><b>gestrichelt</b>, offene Pfeilspitze</td><td>Rückgabewert: <code>verfuegbar: Boolean</code></td></tr>
+<tr><td>Selbstaufruf</td><td>Pfeil auf die eigene Linie</td><td>interner Aufruf: <code>angabenPruefen(...)</code></td></tr>
+<tr><td>create</td><td>Pfeil zum Kopf des neuen Objekts, «create»</td><td>Die Lebenslinie beginnt im Moment der Erzeugung</td></tr>
+<tr><td>Destruction</td><td>X am Ende der Linie</td><td>das Objekt wird innerhalb der Interaktion zerstört</td></tr>
+</table>
+<h3>Kombinierte Fragmente</h3>
+<table class="compare">
+<tr><th>Operator</th><th>Bedeutung</th><th>Entsprechung im Code</th></tr>
+<tr><td><code>alt</code></td><td>Alternativen mit Guards, eine gestrichelte Linie trennt die Operanden: [verfügbar] / [else]</td><td>if / else</td></tr>
+<tr><td><code>opt</code></td><td>wird nur ausgeführt, wenn der [Guard] wahr ist, ohne zweiten Zweig</td><td>if ohne else</td></tr>
+<tr><td><code>loop</code></td><td>Wiederholung: <code>loop(1,3)</code>, [für jedes Gerät]</td><td>for / while</td></tr>
+<tr><td><code>par</code></td><td>die Operanden laufen parallel, ihre Reihenfolge untereinander ist nicht festgelegt</td><td>Threads</td></tr>
+<tr><td><code>break</code></td><td>Abbruch</td><td>break</td></tr>
+</table>
+<div class="tip">💡 Zwei Pfeile auf gleicher Höhe ≠ gleichzeitig. Parallelität gibt es nur über <code>par</code>.</div>
+<h3>Bezug zum Klassendiagramm</h3>
+<p>Die Nachricht <code>reservieren(geraetId, von, bis)</code> an <code>:Backend</code> bedeutet: Backend muss diese Operation besitzen. Gibt es im Sequenzdiagramm eine Operation, die im Klassendiagramm fehlt, ergänze die Klassen.</p>`,
+ notation:[
+  {n:'Lebenslinie',d:'Kopf :Objekt (unterstrichen) + gestrichelte Linie nach unten = Zeit.',s:sv(lifeline(75,4,':Backend',44))},
+  {n:'Akteur mit Lebenslinie',d:'Auch ein externer Benutzer bzw. ein externes System hat eine Lebenslinie.',s:sv(`${actor(75,6,.7)}${L(75,32,75,64,{d:1})}`)},
+  {n:'Synchrone Nachricht',d:'Durchgezogene Linie, gefüllte Pfeilspitze. Der Sender wartet.',s:sv(`${L(20,4,20,62,{d:1})}${L(130,4,130,62,{d:1})}${L(20,36,130,36,{e:'aFill'})}${T(75,30,'reservieren(id)',{fs:9})}`)},
+  {n:'Antwort (Reply)',d:'Gestrichelt, offene Pfeilspitze zurück zum Aufrufer.',s:sv(`${L(20,4,20,62,{d:1})}${L(130,4,130,62,{d:1})}${L(130,36,20,36,{d:1,e:'aOpen'})}${T(75,30,'verfuegbar: Boolean',{fs:9})}`)},
+  {n:'Asynchrone Nachricht',d:'Durchgezogene Linie, offene Pfeilspitze. Der Sender wartet nicht.',s:sv(`${L(20,4,20,62,{d:1})}${L(130,4,130,62,{d:1})}${L(20,36,130,36,{e:'aOpen'})}${T(75,30,'mailSenden()',{fs:9})}`)},
+  {n:'Aktivierung',d:'Schmaler Balken: Der Beteiligte führt eine Verarbeitung aus.',s:sv(`${L(75,4,75,62,{d:1})}<rect class="w" x="70" y="14" width="10" height="38"/>`)},
+  {n:'Selbstaufruf',d:'Nachricht an sich selbst (interne Methode).',s:sv(`${L(45,4,45,62,{d:1})}<rect class="w" x="40" y="10" width="10" height="48"/><rect class="w" x="46" y="34" width="10" height="16"/>${P('M50,20 H78 V34 H58',{e:'aFill'})}${T(84,27,'pruefen()',{fs:9,a:'start'})}`)},
+  {n:'Objekterzeugung («create»)',d:'Die Lebenslinie des neuen Objekts beginnt im Moment der Erzeugung.',s:sv(`${L(15,4,15,62,{d:1})}${L(15,28,84,28,{d:1,e:'aOpen'})}${T(50,22,'«create»',{fs:8.5})}<rect class="w" x="86" y="20" width="58" height="16"/>${T(115,31,':Reservierung',{fs:7.5,u:1})}${L(115,36,115,62,{d:1})}`)},
+  {n:'Objektzerstörung',d:'X am Ende der Lebenslinie.',s:sv(`${lifeline(75,4,':Sitzung',30)}${L(67,46,83,60)}${L(83,46,67,60)}`)},
+  {n:'alt – Alternative',d:'if/else: Operanden mit [Guard] und [else], durch eine gestrichelte Linie getrennt.',s:sv(frag('alt','[verfügbar]',12,4,126,58,true,'[else]'))},
+  {n:'opt – Optional',d:'Wird nur bei [Guard] ausgeführt.',s:sv(frag('opt','[Mail aktiv]'))},
+  {n:'loop – Schleife',d:'Wiederholung: loop(1,3) oder [für jedes …].',s:sv(frag('loop','(1,3)'))},
+  {n:'par – Parallel',d:'Die Operanden werden parallel ausgeführt.',s:sv(frag('par','',12,4,126,58,true,''))}
+ ],
+ examples:[
+  {img:'sq_techrent',title:'Sequenz „Gerät reservieren“ (Musterlösung TechRent)',cap:'alt [Gerät verfügbar]/[else]; darin par (Bestätigung ∥ E-Mail); darin opt [E-Mail-Benachrichtigung aktiviert]; darin loop(1,3) [Versand fehlgeschlagen]. Mail ist asynchron (offene Pfeilspitze).'}
+ ],
+ mistakes:[
+  ['Antwort mit durchgezogener Linie','Antwort = gestrichelt mit offener Pfeilspitze'],
+  ['Asynchrone Nachricht mit gefüllter Pfeilspitze','asynchron → offene Pfeilspitze; gefüllt = synchron'],
+  ['Pfeile auf gleicher Höhe = „gleichzeitig“','Parallelität nur über par'],
+  ['Nachricht, die der Empfänger nicht ausführen kann','Nachricht = Operation des Empfängers; mit dem Klassendiagramm abgleichen'],
+  ['opt mit zwei Zweigen','Zwei Zweige → alt; ein bedingter Zweig → opt'],
+  ['Jede Codezeile als Nachricht','Nur die für das Szenario wesentlichen Interaktionen']
+ ],
+ quiz:[
+  {q:'Welche Frage beantwortet ein Sequenzdiagramm?',o:['Wer kommuniziert wann mit wem?','Wie ist das System aufgebaut?','Welche Zustände hat ein Objekt?','Was soll das System leisten?'],a:0,e:'Die zeitliche Reihenfolge der Nachrichten zwischen den Beteiligten.'},
+  {q:'In welche Richtung läuft die Zeit?',o:['Von oben nach unten','Von links nach rechts','Von unten nach oben','Nicht festgelegt'],a:0,e:'Vertikal = Zeit. Die Horizontale hat keine zeitliche Bedeutung.'},
+  {q:'Wie sieht eine synchrone Nachricht aus?',o:['Durchgezogene Linie, gefüllte Pfeilspitze','Gestrichelt, offene Pfeilspitze','Durchgezogene Linie, offene Pfeilspitze','Gestrichelt, gefüllte Pfeilspitze'],a:0,e:'Der Sender wartet auf das Ende (Methodenaufruf).'},
+  {q:'Wie sieht eine asynchrone Nachricht aus?',o:['Durchgezogene Linie, offene Pfeilspitze','Durchgezogene Linie, gefüllte Pfeilspitze','Gestrichelt mit offener Pfeilspitze','Doppelte Linie'],a:0,e:'Zum Beispiel: Backend → Benachrichtigungsdienst, ohne zu warten.'},
+  {q:'Wie sieht eine Antwort / Rückgabe aus?',o:['Gestrichelt mit offener Pfeilspitze zum Aufrufer','Durchgezogene Linie mit gefüllter Pfeilspitze','X auf der Linie','Aktivierungsbalken'],a:0,e:'verfuegbar: Boolean – gestrichelter Pfeil zurück.'},
+  {q:'Welches Fragment entspricht if/else?',o:['alt','opt','loop','par'],a:0,e:'alt mit den Operanden [Bedingung] und [else].'},
+  {q:'„Wenn der Kunde E-Mail aktiviert hat, wird eine Mail gesendet.“ Welches Fragment?',o:['opt','alt','loop','par'],a:0,e:'Ein bedingter Zweig ohne Alternative → opt.'},
+  {q:'„Höchstens dreimal versuchen“ – welches Fragment?',o:['loop(1,3)','opt','alt','break'],a:0,e:'loop mit den Grenzen min,max.'},
+  {q:'Die Bestätigung im Frontend und der Mailversand sind voneinander unabhängig. Welches Fragment?',o:['par','alt','opt','loop'],a:0,e:'Parallele Operanden → par.'},
+  {q:'Was bedeutet das X am Ende einer Lebenslinie?',o:['Das Objekt wird in der Interaktion zerstört','Ein Fehler','Das Ende des gesamten Diagramms','Eine asynchrone Nachricht'],a:0,e:'Destruction Occurrence.'},
+  {q:'Was zeigt der schmale Balken auf einer Lebenslinie?',o:['Ausführungsspezifikation: Der Beteiligte führt eine Verarbeitung aus','Das Objekt wurde erzeugt','Eine Schleife','Swimlane'],a:0,e:'Aktivierung / Execution Specification.'},
+  {q:'Im Sequenzdiagramm gibt es reservieren(geraetId, von, bis) an :Backend, im Klassendiagramm fehlt diese Operation. Was tun?',o:['Das Klassendiagramm prüfen und ergänzen','Die Nachricht löschen','Nichts – die Diagramme hängen nicht zusammen','Die Nachricht asynchron machen'],a:0,e:'Modelle müssen abgeglichen werden: Nachricht = Operation des Empfängers.'},
+  {q:'Wie wird der Name der gesamten Interaktion notiert?',o:['sd Name im Fünfeck des Rahmens','«sequence» über dem Diagramm','[Name] an der ersten Linie','Als unterstrichener Text'],a:0,e:'Zum Beispiel „sd Anmeldung“.'}
+ ],
+ tasks:[
+  {t:'TechRent – Sequenz „Gerät reservieren“',text:`<p>Kunde wählt im Frontend Gerät + Zeitraum, klickt „Reservieren“. Frontend ruft <code>reservieren(geraetId, von, bis)</code> am Backend auf. Backend prüft Angaben (intern), fragt Datenbank nach Verfügbarkeit (Rückgabe Boolean).</p><ul class="clean"><li>Nicht verfügbar → Antwort ans Frontend, Hinweis für Kunde.</li><li>Verfügbar → Backend erzeugt Reservierung (intern), Datenbank speichert (Bestätigung). Danach <b>unabhängig voneinander</b>: Erfolg ans Frontend → Bestätigung anzeigen; <b>falls</b> E-Mail aktiviert → <b>asynchroner</b> Auftrag an Benachrichtigungsdienst, der bei Fehler <b>höchstens dreimal</b> versucht.</li></ul><p><b>Aufgabe:</b> Sequenzdiagramm (Kunde, :Frontend, :Backend, :Datenbank, :Benachrichtigungsdienst).</p>`,sol:`<div class="figure"><img src="${'@@sq_techrent'}" alt="Lösung"></div><p>Struktur: <b>alt</b> [Gerät verfügbar] / [else] → darin <b>par</b> → im zweiten Operanden <b>opt</b> [E-Mail aktiviert] → darin <b>loop(1,3)</b> [Versand fehlgeschlagen].</p>`}
+ ],
+ comp:['… erklären, welche Frage ein Sequenzdiagramm beantwortet.','… Lebenslinien und Aktivierungen darstellen.','… synchrone, asynchrone Nachrichten und Antworten unterscheiden.','… Selbstaufrufe, Objekterzeugung und -zerstörung darstellen.','… alt, opt, loop und par gezielt einsetzen.','… Nachrichten mit dem Klassendiagramm abgleichen.']
+}
+];
+
+/* Großes SVG: Gerät-Lebenszyklus */
+const BIG={
+stGeraet:`<svg class="sym" viewBox="0 0 820 330" width="820" xmlns="http://www.w3.org/2000/svg">
+${start(40,90,9)}${L(49,90,98,90,{e:'aOpen'})}${T(72,82,'',{fs:10})}
+${state(100,68,140,44,'verfügbar',14)}
+${state(340,68,140,44,'reserviert',14)}
+${state(580,68,150,44,'ausgeliehen',14)}
+${state(580,240,150,44,'defekt',14)}
+${state(340,240,140,44,'in Wartung',14)}
+${L(240,82,340,82,{e:'aOpen'})}${T(290,76,'reservieren',{fs:11})}
+${L(340,100,240,100,{e:'aOpen'})}${T(290,116,'stornieren',{fs:11})}
+${L(480,90,580,90,{e:'aOpen'})}${T(530,84,'ausgeben',{fs:11})}
+${L(655,112,655,240,{e:'aOpen'})}${T(662,170,'zurückgeben',{fs:11,a:'start'})}${T(662,184,'[Schaden festgestellt]',{fs:11,a:'start',c:1})}
+${L(580,262,480,262,{e:'aOpen'})}${T(530,242,'zur Reparatur',{fs:11})}${T(530,256,'geben',{fs:11})}
+${P('M340,262 H170 V112',{e:'aOpen'})}${T(178,200,'Reparatur abgeschlossen',{fs:11,a:'start'})}${T(178,214,'[geprüft]',{fs:11,a:'start',c:1})}
+${P('M655,68 V30 H170 V68',{e:'aOpen'})}${T(412,24,'zurückgeben [kein Schaden]',{fs:11})}
+</svg>`
+};
+
+/* Szenarien: Welches Diagramm passt? */
+const WHICH=[
+ ['Welche Funktionen stellt das System dem Kunden und dem Mitarbeiter bereit, und wer nutzt welche?','uc'],
+ ['Mit dem Auftraggeber sollen Systemgrenze und Benutzerrollen abgestimmt werden.','uc'],
+ ['Wie sieht der verpflichtende gemeinsame Schritt „Anmelden“ für mehrere Funktionen aus?','uc'],
+ ['Welche Attribute und Methoden hat Kunde und wie hängt er mit Reservierung zusammen?','cl'],
+ ['Laptop und Beamer haben gemeinsame Eigenschaften – wie bildet man die Vererbung im Code ab?','cl'],
+ ['Gesucht ist ein „Bauplan“ für den Programmierer: Klassen, Datentypen, Sichtbarkeiten.','cl'],
+ ['Welche Status kann eine Bestellung haben und welche Ereignisse ändern den Status?','st'],
+ ['Wann darf ein Gerät von „defekt“ zurück nach „verfügbar“ wechseln?','st'],
+ ['Lebenszyklus einer Datei: angelegt, geöffnet, entsperrt, gelöscht.','st'],
+ ['Wie läuft eine Buchung Schritt für Schritt ab, mit Prüfungen und Verzweigungen?','ac'],
+ ['Geschäftsprozess mit parallelen Schritten und Aufteilung auf Abteilungen (Swimlanes).','ac'],
+ ['Algorithmus mit der Schleife „Eingabe wiederholen, solange die Daten ungültig sind“.','ac'],
+ ['Welche Aufrufe macht das Frontend ans Backend und das Backend an die Datenbank beim Login, und in welcher Reihenfolge?','sq'],
+ ['Zu zeigen sind synchrone Aufrufe, Antworten und der asynchrone E-Mail-Versand zwischen Services.','sq'],
+ ['Welche Methoden werden mit welchen Parametern zwischen Objekten in einem Szenario aufgerufen?','sq']
+];
+
+/* Zusätzliches Glossar */
+const GLOSS_EXTRA=[
+ ['UML','Unified Modeling Language – standardisierte grafische Sprache zur Modellierung von Software (OMG, 1997; Booch, Rumbaugh, Jacobson – „Three Amigos“).'],
+ ['Strukturdiagramm','Beschreibt den Aufbau eines Systems (z. B. Klassendiagramm).'],
+ ['Verhaltensdiagramm','Beschreibt Verhalten und Abläufe (Use Case, Aktivität, Zustand, Sequenz).'],
+ ['Multiplizität','Wie viele Objekte beteiligt sind: 1, 0..1, 0..*, 1..*, 2..5.'],
+ ['Navigierbarkeit','Pfeil an einer Assoziation: in welche Richtung Zugriff besteht.'],
+ ['Guard','Bedingung in [ ]; Pfad/Übergang nur, wenn sie wahr ist.'],
+ ['Token','Unsichtbare Ausführungsmarke im Aktivitätsdiagramm.'],
+ ['Extension Point','Erweiterungsstelle: Stelle im Use Case, an der ein «extend» möglich ist.'],
+ ['Stereotyp','Kennzeichnung in «» – z. B. «include», «interface», «create».'],
+ ['Kapselung','Attribute private, Zugriff über Methoden.'],
+ ['Kombiniertes Fragment','Rahmen mit dem Operator alt/opt/loop/par im Sequenzdiagramm.'],
+ ['Completion Event','Übergang ohne explizites Ereignis, sobald die Aktivität des Zustands abgeschlossen ist.']
+];
+
+/* ---------- ZUSTAND / SPEICHER ---------- */
+const KEY='uml_lf11_trainer_v1';
+let store={best:{},comp:{},seen:{}};
+try{const s=localStorage.getItem(KEY);if(s)store=Object.assign(store,JSON.parse(s));}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){}};
+
+/* ---------- DARSTELLUNG ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const fixImgs=h=>h.replace(/@@SVG:(\w+)/g,(_,k)=>`<div class="bigsvg">${BIG[k]}</div>`).replace(/@@(\w+)/g,(_,k)=>IMG[k]||'');
+let route={page:'home'};
+
+function modPct(m){
+  const q=store.best[m.id]||0;
+  const c=m.comp.filter((_,i)=>store.comp[m.id+'_'+i]).length/m.comp.length;
+  return Math.round((q*0.6+c*0.4)*100);
+}
+function renderNav(){
+  const b=(p,label,dot,extra='')=>`<button class="navbtn ${(route.page===p||route.mod===p)?'active':''}" onclick="go('${p}')">${dot?`<span class="dot" style="background:${dot}"></span>`:''}${label}${extra}</button>`;
+  let h=`<div class="brand">UML-Trainer<small>LF11 · AP2 · nach deinen Unterlagen</small></div>`;
+  h+=b('home','🏠 Übersicht');
+  h+=`<div class="navgroup">Diagramme</div>`;
+  MODULES.forEach(m=>h+=b(m.id,m.de,m.color,`<span class="pct">${modPct(m)}%</span>`));
+  h+=`<div class="navgroup">Training</div>`;
+  h+=b('which','🧭 Welches Diagramm?');
+  h+=b('symbols','🔣 Symbol erkennen');
+  h+=b('exam','📝 Probeprüfung');
+  h+=b('cards','🃏 Lernkarten (Glossar)');
+  h+=`<button class="btn themebtn" onclick="toggleTheme()">◐ Design</button>`;
+  $('#nav').innerHTML=h;
+}
+function go(p,tab){
+  const m=MODULES.find(x=>x.id===p);
+  route=m?{page:'mod',mod:p,tab:tab||'theory'}:{page:p};
+  render();window.scrollTo(0,0);
+}
+function render(){
+  renderNav();
+  const r=route;
+  if(r.page==='home')return renderHome();
+  if(r.page==='mod')return renderMod();
+  if(r.page==='which')return renderWhich();
+  if(r.page==='symbols')return renderSymbols();
+  if(r.page==='exam')return renderExam();
+  if(r.page==='cards')return renderCards();
+}
+function renderHome(){
+  let h=`<h1>UML-Diagramme lernen</h1><p class="sub">Das Programm basiert auf den Unterlagen aus dem Ordner LF11 (Informationsblätter, Arbeitsblätter, Musterlösungen TechRent). Die Fachbegriffe entsprechen denen der Prüfung.</p>`;
+  h+=`<div class="grid">`+MODULES.map(m=>`<div class="tile" style="--c:${m.color}" onclick="go('${m.id}')"><span class="pill" style="color:${m.color}">${m.type}</span><h3 style="margin-top:8px">${m.de}</h3><p>${m.short}</p><div class="bar"><i style="width:${modPct(m)}%"></i></div></div>`).join('')+`</div>`;
+  h+=`<h2>Spickzettel: Welches Diagramm für welche Frage</h2><div class="card"><table class="compare"><tr><th>Diagramm</th><th>Leitfrage</th><th>Art</th></tr>${MODULES.map(m=>`<tr><td style="color:${m.color}">${m.de}</td><td>${m.leit}</td><td>${m.type}</td></tr>`).join('')}</table></div>`;
+  h+=`<h2>Was ist UML</h2><div class="card"><p><b>Unified Modeling Language</b> – standardisierte grafische Sprache zum Planen, Beschreiben und Dokumentieren von Software. Entwickelt in den 1990er-Jahren von Grady Booch, James Rumbaugh und Ivar Jacobson („Three Amigos“), 1997 als Standard der <b>OMG</b> verabschiedet.</p><p>Die Diagramme gliedern sich in <b>Strukturdiagramme</b> (Aufbau des Systems, z. B. Klassendiagramm) und <b>Verhaltensdiagramme</b> (Verhalten: Anwendungsfall-, Aktivitäts-, Zustands-, Sequenzdiagramm).</p><p>Für die Prüfung zählt nicht nur das Zeichnen, sondern auch zu <b>verstehen, welches Diagramm zu welcher Frage passt</b>.</p></div>`;
+  h+=`<h2>So lernst du</h2><div class="card"><ol><li>Öffne ein Diagramm → lies <b>Theorie</b> und <b>Notation</b>.</li><li>Arbeite die <b>Beispiele</b> aus dem Unterricht und die <b>typischen Fehler</b> durch.</li><li>Mach den <b>Test</b> (das Ergebnis wird gespeichert) und löse die <b>Aufgabe</b> auf Papier, öffne danach die Lösung.</li><li>Hake die <b>Kompetenzen</b> ab – wie in der Kompetenzmatrix aus den Arbeitsblättern.</li><li>Zum Schluss: „Welches Diagramm?“, „Symbol erkennen“ und die <b>Probeprüfung</b>.</li></ol><p style="margin:0"><button class="btn" onclick="if(confirm('Gesamten Fortschritt zurücksetzen?')){store={best:{},comp:{},seen:{}};save();render();}">Fortschritt zurücksetzen</button></p></div>`;
+  $('#main').innerHTML=h;
+}
+const TABS=[['theory','Theorie'],['notation','Notation'],['examples','Beispiele'],['mistakes','Fehler'],['quiz','Test'],['tasks','Aufgaben'],['comp','Kompetenzen']];
+function renderMod(){
+  const m=MODULES.find(x=>x.id===route.mod);
+  let h=`<div style="--c:${m.color}"><span class="pill" style="color:${m.color}">${m.type}</span><h1 style="margin-top:8px">${m.de}</h1><p class="sub">${[...new Set([m.en,m.ru])].join(" · ")}</p>`;
+  h+=`<div class="tabs">${TABS.map(([k,l])=>`<button class="tab ${route.tab===k?'active':''}" onclick="go('${m.id}','${k}')">${l}</button>`).join('')}</div><div id="tabc"></div></div>`;
+  $('#main').innerHTML=h;
+  const c=$('#tabc');
+  if(route.tab==='theory')c.innerHTML=`<div class="card">${m.theory}</div>`;
+  if(route.tab==='notation')c.innerHTML=`<p class="sub" style="margin-top:14px">Alle Notationselemente. Dieselben fragt der Trainer „Symbol erkennen“ ab.</p><div class="notation">${m.notation.map(n=>`<div class="nitem">${n.s}<div><b>${n.n}</b><span>${n.d}</span></div></div>`).join('')}</div>`;
+  if(route.tab==='examples'){
+    let e=m.examples.map(x=>`<div class="card"><h3 style="margin-top:0">${x.title}</h3><div class="figure"><img src="${IMG[x.img]}" alt="${esc(x.title)}"></div><div class="figcap">${x.cap}</div></div>`).join('');
+    if(m.bigsvg)e=`<div class="card"><h3 style="margin-top:0">TechRent – Lebenszyklus eines Geräts</h3>${fixImgs('@@SVG:'+m.bigsvg)}<div class="figcap">Zustände sind Situationen (verfügbar, reserviert…), Übergänge sind Ereignisse; Guards in [ ] unterscheiden „Schaden“/„kein Schaden“. Ein Endzustand ist nicht nötig: Das Gerät bleibt im System.</div></div>
+    <div class="card"><h3 style="margin-top:0">Auto (Informationsblatt)</h3><div class="bigsvg"><svg class="sym" viewBox="0 0 640 170" width="640">${start(30,80,9)}${L(39,80,78,80,{e:'aOpen'})}${state(80,58,130,44,'ausgeschaltet',13)}${L(210,72,300,72,{e:'aOpen'})}${T(255,64,'motorStarten()',{fs:11})}${L(300,92,210,92,{e:'aOpen'})}${T(255,110,'motorAus()',{fs:11})}<rect class="w" x="300" y="40" width="130" height="80" rx="10"/>${T(365,58,'fahrbereit',{fs:13,b:1})}${L(300,66,430,66)}${T(308,84,'entry / Bordcomputer',{fs:10,a:'start'})}${T(308,98,'aktivieren',{fs:10,a:'start'})}${L(430,72,510,72,{e:'aOpen'})}${T(470,40,'losfahren',{fs:11})}${T(470,54,'[Tank > 0]',{fs:11,c:1})}${L(510,92,430,92,{e:'aOpen'})}${T(470,110,'anhalten',{fs:11})}${state(510,58,110,44,'unterwegs',13)}</svg></div><div class="figcap">Beispiel aus dem Informationsblatt: losfahren [Tankfüllstand &gt; 0] / Fahrtbeginn speichern.</div></div>`+e;
+    c.innerHTML=e||'<p>Keine Beispiele.</p>';
+  }
+  if(route.tab==='mistakes')c.innerHTML=`<p class="sub" style="margin-top:14px">Anti-Pattern aus dem Informationsblatt – sie werden in der Prüfung gern abgefragt.</p><div class="mist">${m.mistakes.map(([b,g])=>`<div class="mrow"><div class="mbad"><b>✗ Falsch</b><br>${b}</div><div class="mgood"><b>✓ Richtig</b><br>${g}</div></div>`).join('')}</div>`;
+  if(route.tab==='quiz')startQuiz(c,m.quiz.map(q=>({...q})),m.id,m.color);
+  if(route.tab==='tasks')c.innerHTML=m.tasks.map((t,i)=>`<div class="card"><h3 style="margin-top:0">${t.t}</h3>${fixImgs(t.text)}<button class="btn primary" onclick="this.nextElementSibling.classList.toggle('show');this.textContent=this.nextElementSibling.classList.contains('show')?'Lösung ausblenden':'Lösung anzeigen'">Lösung anzeigen</button><div class="sol" style="margin-top:12px">${fixImgs(t.sol)}</div></div>`).join('');
+  if(route.tab==='comp')c.innerHTML=`<div class="card"><p style="margin-top:0">Ich kann … (hake ab, was du schon sicher beherrschst)</p>${m.comp.map((t,i)=>`<label class="chk"><input type="checkbox" ${store.comp[m.id+'_'+i]?'checked':''} onchange="store.comp['${m.id}_${i}']=this.checked;save();renderNav()"> <span>${t}</span></label>`).join('')}</div>`;
+  document.querySelectorAll('.figure img').forEach(img=>img.onclick=()=>{const z=$('#zoom');z.querySelector('img').src=img.src;z.style.display='flex';});
+}
+
+/* ---------- QUIZ-ENGINE ---------- */
+function startQuiz(el,qs,key,color,limit){
+  qs=shuffle(qs);if(limit)qs=qs.slice(0,limit);
+  let i=0,score=0,wrong=[];
+  const show=()=>{
+    if(i>=qs.length){
+      const pct=score/qs.length;
+      if(key){store.best[key]=Math.max(store.best[key]||0,pct);save();renderNav();}
+      el.innerHTML=`<div class="card result"><div class="big" style="color:${pct>=.8?'var(--ok)':pct>=.5?'var(--warn)':'var(--bad)'}">${score} / ${qs.length}</div><p>${pct>=.8?'Sehr gut! Prüfungsniveau 👍':pct>=.5?'Nicht schlecht, wiederhole die Themen mit Fehlern.':'Lies die Theorie noch einmal und versuche es erneut.'}</p>${wrong.length?`<div style="text-align:left"><h3>Fehler:</h3><ul class="clean">${wrong.map(w=>`<li>${w}</li>`).join('')}</ul></div>`:''}<button class="btn primary" id="again">Noch einmal</button></div>`;
+      el.querySelector('#again').onclick=()=>startQuiz(el,qs,key,color,limit);return;
+    }
+    const q=qs[i];
+    const opts=shuffle(q.o.map((t,k)=>({t,ok:k===q.a})));
+    el.innerHTML=`<div class="card" style="--c:${color}"><div class="qhead"><span>Frage ${i+1} von ${qs.length}${q.tag?' · '+q.tag:''}</span><span>✓ ${score}</span></div><div class="bar"><i style="width:${i/qs.length*100}%"></i></div>${q.svg?`<div class="qsvg">${q.svg}</div>`:''}<div class="qtext">${q.q}</div><div class="opts">${opts.map((o,k)=>`<button class="opt" data-k="${k}">${o.t}</button>`).join('')}</div><div id="fb"></div></div>`;
+    el.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{
+      const o=opts[+b.dataset.k];
+      el.querySelectorAll('.opt').forEach((x,k)=>{x.disabled=true;if(opts[k].ok)x.classList.add('ok');});
+      if(o.ok)score++;else{b.classList.add('bad');wrong.push(`${q.q.replace(/<[^>]+>/g,'')} → <b>${q.o[q.a]}</b>`);}
+      el.querySelector('#fb').innerHTML=`<div class="expl">${o.ok?'✅ Richtig. ':'❌ Falsch. '}${q.e||''}</div><p><button class="btn primary" id="nx">${i+1<qs.length?'Weiter →':'Ergebnis'}</button></p>`;
+      el.querySelector('#nx').onclick=()=>{i++;show();};
+      el.querySelector('#nx').focus();
+    });
+  };
+  show();
+}
+function symbolQuestions(){
+  const all=[];MODULES.forEach(m=>m.notation.forEach(n=>all.push({...n,m})));
+  return all.map(n=>{
+    const same=all.filter(x=>x!==n&&x.n!==n.n);
+    const pref=shuffle(same.filter(x=>x.m===n.m)).concat(shuffle(same.filter(x=>x.m!==n.m)));
+    const distract=[...new Set(pref.map(x=>x.n))].slice(0,3);
+    return {svg:n.s,q:'Wie heißt dieses Element?',o:[n.n,...distract],a:0,e:`<b>${n.n}</b> (${n.m.de}): ${n.d}`,tag:n.m.de};
+  });
+}
+function whichQuestions(){
+  return WHICH.map(([s,id])=>{const m=MODULES.find(x=>x.id===id);return{q:s,o:[m.de,...MODULES.filter(x=>x!==m).map(x=>x.de)].slice(0,5),a:0,e:`<b>${m.de}</b>: ${m.leit}`};});
+}
+function renderWhich(){$('#main').innerHTML=`<h1>Welches Diagramm?</h1><p class="sub">Gegeben ist eine Situation – wähle den passenden Diagrammtyp. Die häufigste Frage: „Welches UML-Diagramm eignet sich …?“</p><div id="qz"></div>`;startQuiz($('#qz'),whichQuestions(),'which','var(--accent)');}
+function renderSymbols(){$('#main').innerHTML=`<h1>Symbol erkennen</h1><p class="sub">Es wird ein Notationselement gezeigt – benenne es.</p><div id="qz"></div>`;startQuiz($('#qz'),symbolQuestions(),'symbols','var(--accent)',20);}
+function renderExam(){
+  $('#main').innerHTML=`<h1>Probeprüfung</h1><p class="sub">20 zufällige Fragen aus allen Themen: Theorie, Symbole und Diagrammwahl.</p><div id="qz"></div>`;
+  let pool=[];MODULES.forEach(m=>pool.push(...m.quiz.map(q=>({...q,tag:m.de}))));
+  pool=shuffle(pool).slice(0,13).concat(shuffle(symbolQuestions()).slice(0,4),shuffle(whichQuestions()).slice(0,3));
+  startQuiz($('#qz'),pool,'exam','var(--accent)');
+}
+let cardIdx=0,cards=[];
+function renderCards(){
+  if(!cards.length){MODULES.forEach(m=>m.notation.forEach(n=>cards.push({t:n.n,d:n.d,s:n.s,m:m.de})));GLOSS_EXTRA.forEach(([t,d])=>cards.push({t,d,m:'Allgemein'}));cards=shuffle(cards);}
+  const c=cards[cardIdx%cards.length];
+  $('#main').innerHTML=`<h1>Lernkarten</h1><p class="sub">Klicke auf die Karte, um sie umzudrehen. ${cardIdx%cards.length+1} / ${cards.length}</p>
+  <div class="flash" id="fl"><div class="flash-inner"><div class="face"><div class="t">${c.t}</div><div class="h">${c.m} · was ist das? klicken</div></div><div class="face back">${c.s?`<div style="width:170px">${c.s}</div>`:''}<div style="margin-top:8px">${c.d}</div></div></div></div>
+  <div class="row" style="justify-content:center"><button class="btn" onclick="cardIdx=(cardIdx-1+cards.length)%cards.length;renderCards()">← Zurück</button><button class="btn primary" onclick="cardIdx++;renderCards()">Weiter →</button><button class="btn" onclick="cards=shuffle(cards);cardIdx=0;renderCards()">Mischen</button></div>`;
+  $('#fl').onclick=()=>$('#fl').classList.toggle('flipped');
+}
+function toggleTheme(){
+  const r=document.documentElement;const cur=r.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+  const nx=cur==='dark'?'light':'dark';r.setAttribute('data-theme',nx);try{localStorage.setItem(KEY+'_theme',nx);}catch(e){}
+}
+try{const t=localStorage.getItem(KEY+'_theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}
+document.addEventListener('keydown',e=>{if(route.page==='cards'){if(e.key==='ArrowRight'){cardIdx++;renderCards();}if(e.key===' '){e.preventDefault();$('#fl').classList.toggle('flipped');}}});
+render();
+</script>
+</body>
+</html>
