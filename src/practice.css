@@ -17,7 +17,7 @@ select:focus,input:focus,textarea:focus,button:focus-visible{outline:2px solid v
 .ed-canvas{overflow:auto;max-height:680px;min-height:420px;background:
   linear-gradient(var(--line) 1px,transparent 1px) 0 0/100% 24px,linear-gradient(90deg,var(--line) 1px,transparent 1px) 0 0/24px 100%,var(--card);background-blend-mode:normal}
 .ed-canvas svg{display:block;max-width:none;touch-action:pan-x pan-y}
-.ed-canvas svg .nd{cursor:move;touch-action:none}
+.ed-canvas svg .nd{cursor:move}
 .ed-canvas svg .eg{cursor:pointer}
 .ed-canvas svg.adding{cursor:crosshair}
 .ed-side{border-left:1px solid var(--line);padding:12px;font-size:14px;min-width:0}
@@ -91,4 +91,24 @@ textarea.oans{font-family:inherit;font-size:15px;margin-top:8px}
 .sqd>summary{padding:10px 12px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
 .sqd .sqb{border-top:1px solid var(--line)}
 #sqprev{stroke:var(--accent);stroke-width:2;stroke-dasharray:6 4;fill:none;pointer-events:none}
-.ed-canvas svg .ph{cursor:pointer}
+.ed-canvas svg .ph{cursor:grab}
+/* ---------- Bausteine ziehen und Linien verbinden ---------- */
+.tool.pal{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+body.paldrag,.ed-canvas svg{user-select:none;-webkit-user-select:none}
+body.paldrag{cursor:grabbing}
+.palghost{position:fixed;left:0;top:0;z-index:1000;pointer-events:none;opacity:.55}
+.palghost.ok{opacity:.92}
+.palghost svg{display:block;overflow:visible}
+.palghost.pill{background:var(--accent);color:var(--on-accent);font-size:13px;font-weight:650;padding:5px 10px;border-radius:8px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.ed-canvas.drop{outline:2px dashed var(--accent);outline-offset:-3px}
+svg .halo{fill:transparent;stroke:none}
+svg .ch{opacity:0;cursor:crosshair;transition:opacity .12s}
+svg .chh{fill:transparent;stroke:none}
+svg .chd{fill:var(--accent);stroke:var(--card);stroke-width:2}
+.ed-canvas svg .nd:hover .ch,.ed-canvas svg .nd.sel .ch{opacity:1}
+.ed-canvas svg.linking .ch,.ed-canvas svg.adding .ch{opacity:0}
+.ed-canvas svg .nd.tgt .w,.ed-canvas svg .nd.tgt .s{stroke:var(--accent);stroke-width:2.6}
+.ed-canvas svg .nd.tgt .f{stroke:var(--accent);stroke-width:4}
+svg .ll{fill:transparent;stroke:none;cursor:crosshair}
+.ed-canvas svg .ll:hover{fill:var(--accent);fill-opacity:.13}
+@media (prefers-reduced-motion:reduce){svg .ch{transition:none}}

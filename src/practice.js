@@ -19,6 +19,16 @@ const CONT=k=>k==='system'||k==='lane';
 
 let Pz={type:'uc',task:null,doc:null,sel:null,mode:{t:'select'},undo:[],drag:null,find:null,fb:null,ai:{turns:[],busy:false,ctl:null,out:''}};
 if(!store.draw)store.draw={};if(!store.drawBest)store.drawBest={};if(!store.custom)store.custom={};
+/* EDIT ist nur gesetzt, während die Zeichenfläche des Editors gezeichnet wird (nicht bei Lösungen oder beim Bildexport) */
+let EDIT=false;
+/* HOLD verschiebt das Neuzeichnen kurz, solange ein Finger gerade aufsetzt (siehe bindCanvas) */
+let HOLD=false;
+/* Auf Touch-Geräten wird das Textfeld nicht automatisch fokussiert, sonst klappt bei jedem Baustein die Tastatur auf */
+const finePtr=()=>!window.matchMedia||!matchMedia('(pointer:coarse)').matches;
+/* An Rahmen und Notizen hängen keine Linien */
+const canLink=n=>!!n&&!CONT(n.kind)&&n.kind!=='note';
+/* Linienart, die beim Ziehen von einem Verbindungspunkt entsteht (je Diagrammart gemerkt) */
+const curEdge=()=>{Pz.ek=Pz.ek||{};const p=PAL[Pz.type];return Pz.ek[Pz.type]||(p?p.edges[0][0]:null);};
 
 const linesOf=s=>String(s||'').split('\n').map(x=>x.trim()).filter(Boolean);
 function wrapT(t,max=20){const out=[];String(t||'').split('\n').forEach(par=>{let line='';par.split(/\s+/).forEach(w=>{if(line&&(line+' '+w).length>max){out.push(line);line=w;}else line=(line+' '+w).trim();});out.push(line);});return out;}
@@ -82,9 +92,14 @@ function drawNode(n){const b=box(n),k=n.kind;const st=(Pz.sel===n.id||(Pz.mode.t
  else if(k==='flowfinal'){s=`<circle class="w${st}" cx="${b.cx}" cy="${b.cy}" r="12"/>${L(b.cx-8,b.cy-8,b.cx+8,b.cy+8)}${L(b.cx+8,b.cy-8,b.cx-8,b.cy+8)}`;}
  else if(k==='choice'||k==='diamond'){s=`<path class="w${st}" d="M${b.cx},${b.y} L${b.x+b.w},${b.cy} L${b.cx},${b.y+b.h} L${b.x},${b.cy} Z"/>`;}
  else if(k==='bar'){s=`<rect x="${b.x-6}" y="${b.y-6}" width="${b.w+12}" height="${b.h+12}" fill="transparent"/><rect class="f${st}" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}"/>`;}
- let h='';
+ let h='',halo='',ch='';
  if(Pz.sel===n.id&&(CONT(k)||k==='bar'))h=`<rect class="handle" data-h="${n.id}" x="${b.x+b.w-7}" y="${b.y+b.h-7}" width="14" height="14" rx="3"/>`;
- return `<g class="nd" data-id="${n.id}">${s}</g>${h}`;
+ /* Nur im Editor: unsichtbarer Rand als Hover-Zone und vier blaue Verbindungspunkte, von denen man Linien zieht */
+ if(EDIT&&canLink(n)){const ox=k==='actor'?26:12,ex=k==='actor'?22:0;
+  halo=`<rect class="halo" x="${b.x-ox-12}" y="${b.y-24}" width="${b.w+2*ox+24}" height="${b.h+ex+48}"/>`;
+  /* Jeder Punkt hat eine größere unsichtbare Greiffläche, damit er auch mit dem Finger zu treffen ist */
+  ch=[[b.cx,b.y-12],[b.x+b.w+ox,b.cy],[b.cx,b.y+b.h+ex+12],[b.x-ox,b.cy]].map(([x,y])=>`<circle class="ch chh" data-ch="${n.id}" cx="${x}" cy="${y}" r="11"/><circle class="ch chd" data-ch="${n.id}" cx="${x}" cy="${y}" r="6"/>`).join('');}
+ return `<g class="nd${EDIT&&Pz.sel===n.id?' sel':''}" data-id="${n.id}">${halo}${s}${ch}</g>${h}`;
 }
 function drawEdge(e,doc){const g=edgeGeom(e,doc);if(!g)return '';const k=EK[e.kind]||{};const st=(Pz.sel===e.id?' selx':'')+(Pz.find&&Pz.find.includes(e.id)?' hl':'');
  let s=`<path class="hit" d="${g.d}"/><path class="s${k.d?' d':''}${st}" d="${g.d}" ${k.e?`marker-end="url(#${k.e})"`:''} ${k.s?`marker-start="url(#${k.s})"`:''}/>`;
@@ -96,12 +111,13 @@ function drawEdge(e,doc){const g=edgeGeom(e,doc);if(!g)return '';const k=EK[e.ki
  if(e.m2)s+=`<text class="lbl" x="${g.p2[0]-g.u[0]*26+nx*11}" y="${g.p2[1]-g.u[1]*26+ny*11+4}" font-size="12" text-anchor="middle">${esc(e.m2)}</text>`;
  return `<g class="eg" data-eid="${e.id}">${s}</g>`;
 }
-function drawCanvas(){const svg=$('#cv');if(!svg)return;const d=Pz.doc;
+function drawCanvas(){const svg=$('#cv');if(!svg||HOLD)return;const d=Pz.doc;svg.classList.toggle('linking',!!(Pz.drag&&Pz.drag.link));EDIT=true;try{
  if(d.type==='sq'){const r=drawSQ(d);Pz.sq=r;svg.setAttribute('width',Math.max(r.w,900));svg.setAttribute('height',Math.max(r.h+90,520));svg.classList.toggle('adding',Pz.mode.t!=='select');svg.innerHTML=r.svg;return;}
  let mx=0,my=0;d.nodes.forEach(n=>{const b=box(n);mx=Math.max(mx,b.x+b.w);my=Math.max(my,b.y+b.h);});
  svg.setAttribute('width',Math.max(980,mx+260));svg.setAttribute('height',Math.max(620,my+220));
  svg.classList.toggle('adding',Pz.mode.t!=='select');
  svg.innerHTML=d.nodes.filter(n=>CONT(n.kind)).map(drawNode).join('')+d.edges.map(e=>drawEdge(e,d)).join('')+d.nodes.filter(n=>!CONT(n.kind)).map(drawNode).join('');
+ }finally{EDIT=false;}
 }
 
 /* ----- Umgang mit dem Dokument ----- */
@@ -118,10 +134,10 @@ function addNode(kind,x,y){snap();const d=Pz.doc;const n={id:nid('n'),kind:kind=
  if(n.kind==='class'){n.attrs='';n.methods='';}
  const [w,h]=size(n);n.x=Math.max(4,Math.round(x-(CONT(kind)?20:w/2)));n.y=Math.max(4,Math.round(y-(CONT(kind)?16:h/2)));
  d.nodes.push(n);Pz.sel=n.id;Pz.mode={t:'select'};touchDoc();refreshEd();
- const f=$('#p_text');if(f){f.focus();f.select&&f.select();}
+ const f=$('#p_text');if(f&&finePtr()){f.focus();f.select&&f.select();}
 }
 function addEdge(kind,from,to){snap();const e={id:nid('e'),kind,from,to,label:''};Pz.doc.edges.push(e);Pz.sel=e.id;Pz.mode={t:'select'};touchDoc();refreshEd();
- const f=$('#p_label');if(f&&(kind==='trans'||kind==='flow'))f.focus();}
+ const f=$('#p_label');if(f&&(kind==='trans'||kind==='flow')&&finePtr())f.focus();}
 function delSel(){const d=Pz.doc;if(!Pz.sel)return;if(d.type==='sq')return sqDel();snap();
  if(d.nodes.some(n=>n.id===Pz.sel)){d.nodes=d.nodes.filter(n=>n.id!==Pz.sel);d.edges=d.edges.filter(e=>e.from!==Pz.sel&&e.to!==Pz.sel);}
  else d.edges=d.edges.filter(e=>e.id!==Pz.sel);
@@ -131,17 +147,67 @@ function prev(){const e=Pz.doc.edges.find(x=>x.id===Pz.sel);if(!e)return;snap();
 function setMode(m){Pz.mode=m;renderTools();drawCanvas();renderProps();}
 
 /* ----- Oberfläche ----- */
-function renderTools(){const el=$('#tools');if(!el)return;if(Pz.type==='sq')return sqTools(el);const p=PAL[Pz.type];if(!p){el.innerHTML='';return;}
- const on=(t,k)=>Pz.mode.t===t&&Pz.mode.kind===k?' on':'';
- el.innerHTML=`<button class="tool${Pz.mode.t==='select'?' on':''}" onclick="setMode({t:'select'})">🖱 Auswahl</button><span class="sep"></span>`+
-  p.nodes.map(([k,l])=>`<button class="tool${on('add',k)}" onclick="setMode({t:'add',kind:'${k}'})">＋ ${l}</button>`).join('')+`<span class="sep"></span>`+
-  p.edges.map(([k,l])=>`<button class="tool edge${on('edge',k)}" onclick="setMode({t:'edge',kind:'${k}',from:null})">${l}</button>`).join('')+
-  `<span class="sep"></span><button class="tool" onclick="undo()">↶ Rückgängig</button><button class="tool" id="clr" onclick="clearDoc(this)">🗑 Leeren</button>`;
- const h=$('#edhint');if(h){const m=Pz.mode;
-  h.textContent=m.t==='add'?`Klicke ins Feld, um zu setzen: ${KN[m.kind==='iface'?'class':m.kind]||m.kind}. Esc bricht ab.`:
-   m.t==='edge'?(m.from?'Klicke jetzt auf das Element, zu dem die Linie führt (an diesem Ende sitzt die Pfeilspitze).':(m.kind==='agg'||m.kind==='comp'?'Klicke zuerst auf die Klasse, an der die Raute stehen soll, dann auf die zweite Klasse.':'Klicke auf das Element, an dem die Linie beginnt, dann auf das zweite Element.')):
-   'Ziehe Elemente mit der Maus. Klicke auf ein Element oder eine Linie, um den Text rechts zu ändern. Entf löscht.';}
+const cancelBtn=()=>Pz.mode.t!=='select'?`<button class="tool" onclick="setMode({t:'select'})">✕ Abbrechen</button>`:'';
+function renderTools(){const el=$('#tools');if(!el)return;palEnd();bindTools(el);if(Pz.type==='sq')return sqTools(el);const p=PAL[Pz.type];if(!p){el.innerHTML='';return;}
+ const ek=curEdge();
+ el.innerHTML=p.nodes.map(([k,l])=>`<button class="tool pal" data-pal="node:${k}" title="Auf die Zeichenfläche ziehen oder anklicken">＋ ${l}</button>`).join('')+`<span class="sep"></span>`+
+  p.edges.map(([k,l])=>`<button class="tool edge pal${ek===k?' on':''}" data-pal="edge:${k}" aria-pressed="${ek===k}" title="Linienart für die nächste Linie">${l}</button>`).join('')+
+  `<span class="sep"></span>${cancelBtn()}<button class="tool" onclick="undo()">↶ Rückgängig</button><button class="tool" id="clr" onclick="clearDoc(this)">🗑 Leeren</button>`;
+ const h=$('#edhint');if(h){const m=Pz.mode,k=EK[ek]||{};
+  h.textContent=m.t==='edge'&&m.from?'Klicke jetzt auf das Element, zu dem die Linie führt. Esc bricht ab.':
+   'Ziehe einen Baustein von oben auf die Zeichenfläche. Für eine Linie ziehst du von einem blauen Punkt am Rand eines Elements zum nächsten Element.'+
+   (k.s?' Die Raute sitzt an dem Element, bei dem du beginnst.':k.e?' Die Pfeilspitze sitzt an dem Element, bei dem du loslässt.':'')+' Entf löscht.';}
 }
+
+/* ----- Bausteine aus der Palette ziehen ----- */
+let Pal=null,palAt=0;
+function palEnd(){if(Pal&&Pal.ghost)Pal.ghost.remove();Pal=null;const cv=$('.ed-canvas');if(cv)cv.classList.remove('drop');document.body.classList.remove('paldrag');}
+/* Position des Zeigers auf der Zeichenfläche oder null, wenn er außerhalb des sichtbaren Bereichs liegt */
+function palOver(e){const svg=$('#cv'),cv=svg&&svg.closest('.ed-canvas');if(!cv)return null;const c=cv.getBoundingClientRect();
+ if(e.clientX<c.left||e.clientX>c.right||e.clientY<c.top||e.clientY>c.bottom)return null;const r=svg.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top];}
+/* Vorschau, die beim Ziehen am Zeiger hängt: bei Elementen die echte Form, sonst ein Schildchen mit dem Namen */
+function palGhost(pal,btn){const [t,k]=pal.split(':');const g=document.createElement('div');g.className='palghost';
+ if(t==='node'){const n={id:'_',kind:k==='iface'?'class':k,x:0,y:0,text:DEFTXT[k]||''};if(k==='iface'){n.stereo='interface';n.text='Interface';}if(n.kind==='class'){n.attrs='';n.methods='';}
+  const [w,h]=size(n),px=k==='actor'?22:3,py=3;n.x=px;n.y=py;
+  g.innerHTML=`<svg class="sym" xmlns="http://www.w3.org/2000/svg" width="${w+2*px}" height="${h+2*py+(k==='actor'?22:0)}">${drawNode(n)}</svg>`;
+  g.ox=px+(CONT(k)?20:w/2);g.oy=py+(CONT(k)?16:h/2);}
+ else{g.classList.add('pill');g.textContent=btn.textContent.trim();g.ox=-12;g.oy=-14;}
+ return g;}
+function bindTools(el){if(el.dataset.bound)return;el.dataset.bound=1;
+ el.addEventListener('pointerdown',e=>{const b=e.target.closest('[data-pal]');if(!b||b.disabled||e.button)return;palEnd();
+  Pal={b,id:e.pointerId,pal:b.dataset.pal,sx:e.clientX,sy:e.clientY,moved:false,ghost:null};try{b.setPointerCapture(e.pointerId);}catch(_){}
+  /* verhindert, dass beim Ziehen Text auf der Seite markiert wird */
+  e.preventDefault();});
+ el.addEventListener('pointermove',e=>{const g=Pal;if(!g||e.pointerId!==g.id)return;
+  if(!g.moved){if(Math.hypot(e.clientX-g.sx,e.clientY-g.sy)<6)return;g.moved=true;g.ghost=palGhost(g.pal,g.b);document.body.appendChild(g.ghost);document.body.classList.add('paldrag');}
+  g.ghost.style.transform=`translate(${Math.round(e.clientX-g.ghost.ox)}px,${Math.round(e.clientY-g.ghost.oy)}px)`;
+  const ok=!!palOver(e);g.ghost.classList.toggle('ok',ok);const cv=$('.ed-canvas');if(cv)cv.classList.toggle('drop',ok);});
+ const end=e=>{const g=Pal;if(!g||e.pointerId!==g.id)return;palEnd();if(e.type!=='pointerup')return;palAt=performance.now();
+  if(!g.moved)palClick(g.pal);else{const p=palOver(e);if(p)palDrop(g.pal,p[0],p[1]);}};
+ el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);
+ /* Maus und Finger sind mit pointerup schon erledigt. Das click-Ereignis zählt nur noch für die Tastatur (detail = 0). */
+ el.addEventListener('click',e=>{const b=e.target.closest('[data-pal]');if(!b||b.disabled)return;if(e.detail!==0&&performance.now()-palAt<800)return;palClick(b.dataset.pal);});
+}
+/* Oberstes verbindbares Element an einem Punkt; das Startelement zählt nur bei Linienarten, die eine Schleife erlauben */
+function linkTarget(x,y,from){const d=Pz.doc;for(let i=d.nodes.length-1;i>=0;i--){const n=d.nodes[i];if(!canLink(n))continue;const b=box(n),own=n.id===from,p=own?0:8,ex=n.kind==='actor'?22:0;
+  if(x>=b.x-p&&x<=b.x+b.w+p&&y>=b.y-p&&y<=b.y+b.h+ex+p){if(own&&!['trans','assoc','agg','comp'].includes(curEdge()))continue;return n;}}
+ return null;}
+/* Freier Platz im sichtbaren Bereich für ein Element, das per Klick statt per Ziehen eingefügt wird */
+function freeSpot(kind){const cv=$('.ed-canvas'),d=Pz.doc,sl=cv?cv.scrollLeft:0,st=cv?cv.scrollTop:0,cw=cv?cv.clientWidth:700,chh=cv?cv.clientHeight:420;
+ if(kind==='lane'){const ls=d.nodes.filter(n=>n.kind==='lane');if(ls.length){const r=Math.max(...ls.map(n=>box(n).x+box(n).w));return [r+20,Math.min(...ls.map(n=>n.y))+16];}}
+ if(CONT(kind)){let x=sl+44,y=st+40;while(d.nodes.some(n=>CONT(n.kind)&&Math.abs(n.x-(x-20))<24&&Math.abs(n.y-(y-16))<24)){x+=30;y+=30;}return [x,y];}
+ const t={kind:kind==='iface'?'class':kind,x:0,y:0,text:DEFTXT[kind]||''},[w,h]=size(t);let x=sl+cw/2,y=st+Math.min(chh,460)/2;
+ const hit=()=>d.nodes.some(n=>{if(CONT(n.kind))return false;const b=box(n);return Math.abs(b.cx-x)<(b.w+w)/2+14&&Math.abs(b.cy-y)<(b.h+h)/2+14;});
+ for(let i=0;i<40&&hit();i++){x+=34;y+=30;}
+ return [x,y];}
+function palDrop(pal,x,y){const [t,k]=pal.split(':');
+ if(t==='node')return addNode(k,x,y);
+ if(t==='edge'){curEdge();Pz.ek[Pz.type]=k;const n=linkTarget(x,y);setMode(n?{t:'edge',kind:k,from:n.id}:{t:'select'});return;}
+ sqDrop(t,k,x,y);}
+function palClick(pal){const [t,k]=pal.split(':');
+ if(t==='node'){const p=freeSpot(k);addNode(k,p[0],p[1]);return;}
+ if(t==='edge'){curEdge();Pz.ek[Pz.type]=k;setMode({t:'select'});return;}
+ sqClick(t,k);}
 function clearDoc(btn){if(btn.dataset.sure){snap();Pz.doc=newDoc(Pz.type);Pz.sel=null;Pz.fb=null;touchDoc();refreshEd();renderFb();}else{btn.dataset.sure=1;btn.textContent='Wirklich leeren?';setTimeout(()=>{if(btn.isConnected){delete btn.dataset.sure;btn.textContent='🗑 Leeren';}},3000);}}
 function renderProps(){const el=$('#props');if(!el)return;const d=Pz.doc;if(d.type==='sq')return sqProps(el);
  const n=d.nodes.find(x=>x.id===Pz.sel),e=d.edges.find(x=>x.id===Pz.sel);
@@ -162,20 +228,24 @@ function renderProps(){const el=$('#props');if(!el)return;const d=Pz.doc;if(d.ty
   if(!['include','extend','gen','real'].includes(e.kind))h+=`<label for="p_label">${e.kind==='trans'?'Beschriftung':e.kind==='flow'?'Guard (nur nach einer Decision)':'Name (optional)'}</label>${inp('p_label','label',e.label,ph)}`;
   if(['assoc','agg','comp'].includes(e.kind)&&Pz.type==='cl')h+=`<label for="p_m1">Multiplizität bei „${esc(refName(a))}“</label>${inp('p_m1','m1',e.m1,'1, 0..1, 0..*, 1..*')}<label for="p_m2">Multiplizität bei „${esc(refName(b))}“</label>${inp('p_m2','m2',e.m2,'1, 0..1, 0..*, 1..*')}`;
   h+=`<p style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap"><button class="tool" onclick="prev()">⇄ Umdrehen</button><button class="tool" onclick="delSel()">✕ Löschen</button></p>`;el.innerHTML=h;return;}
- el.innerHTML=`<p class="hint">Nichts ausgewählt.<br><br><b>So zeichnest du</b><br>1. Schaltfläche «＋ …» und Klick ins Feld setzt ein Element.<br>2. Linien-Schaltfläche, dann Klick auf zwei Elemente.<br>3. Klick auf ein Element: Bearbeiten hier.<br>4. «Prüfen» unter dem Feld startet den Bot.</p>`;
+ el.innerHTML=`<p class="hint">Nichts ausgewählt.<br><br><b>So zeichnest du</b><br>1. Einen Baustein «＋ …» von oben auf die Fläche ziehen.<br>2. Linie: von einem blauen Punkt am Rand eines Elements zum nächsten Element ziehen. Es gilt die oben markierte Linienart.<br>3. Klick auf ein Element oder eine Linie: Bearbeiten hier.<br>4. «Prüfen» unter dem Feld startet den Bot.</p>`;
 }
 const refName=n=>!n?'?':(n.text&&!['initial','final','flowfinal','choice','diamond','bar'].includes(n.kind)?n.text.replace(/\n/g,' '):KN[n.kind]+' '+n.id);
 function refreshEd(){renderTools();drawCanvas();renderProps();if(Pz.doc.type==='sq')renderSQB();}
 
 function bindCanvas(){const svg=$('#cv');if(!svg)return;
  const pt=e=>{const r=svg.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top];};
- svg.onpointerdown=e=>{const d=Pz.doc;if(d.type==='sq')return sqDown(e,svg);const [x,y]=pt(e);
-  const hEl=e.target.closest('[data-h]'),nEl=e.target.closest('[data-id]'),eEl=e.target.closest('[data-eid]');
-  if(Pz.mode.t==='add'){addNode(Pz.mode.kind,x,y);return;}
+ const down=e=>{const d=Pz.doc;if(d.type==='sq')return sqDown(e,svg);const [x,y]=pt(e);
+  const hEl=e.target.closest('[data-h]'),cEl=e.target.closest('[data-ch]');let nEl=e.target.closest('[data-id]'),eEl=e.target.closest('[data-eid]');
+  /* Der unsichtbare Rand eines Elements soll Linien und Nachbarelemente darunter nicht verdecken */
+  if(nEl&&e.target.classList.contains('halo')){for(const q of document.elementsFromPoint(e.clientX,e.clientY)){if(!svg.contains(q)||q===svg)break;if(q.classList.contains('halo'))continue;
+    const g=q.closest('[data-eid]'),m=q.closest('[data-id]');
+    if(g){eEl=g;nEl=null;}else if(m&&m!==nEl&&canLink(d.nodes.find(z=>z.id===m.dataset.id)))nEl=m;break;}}
   if(Pz.mode.t==='edge'){const n=nEl&&d.nodes.find(q=>q.id===nEl.dataset.id);
-   if(n&&!CONT(n.kind)&&n.kind!=='note'){if(!Pz.mode.from){Pz.mode.from=n.id;renderTools();drawCanvas();}else addEdge(Pz.mode.kind,Pz.mode.from,n.id);}
-   else{Pz.mode.from=null;renderTools();drawCanvas();}return;}
+   if(canLink(n)&&Pz.mode.from)addEdge(Pz.mode.kind,Pz.mode.from,n.id);else setMode({t:'select'});return;}
   if(hEl){const n=d.nodes.find(q=>q.id===hEl.dataset.h);snap();const [w,h]=size(n);Pz.drag={rs:n,sx:x,sy:y,w,h};svg.setPointerCapture(e.pointerId);e.preventDefault();return;}
+  if(cEl&&nEl&&nEl.dataset.id===cEl.dataset.ch&&(e.pointerType==='mouse'||Pz.sel===cEl.dataset.ch)){const n=d.nodes.find(q=>q.id===cEl.dataset.ch);const ch=Pz.sel!==n.id;Pz.sel=n.id;Pz.find=null;
+   Pz.drag={link:n.id,sx:x,sy:y,moved:false,to:null};svg.setPointerCapture(e.pointerId);e.preventDefault();drawCanvas();if(ch)renderProps();return;}
   if(nEl){const n=d.nodes.find(q=>q.id===nEl.dataset.id);const ch=Pz.sel!==n.id;Pz.sel=n.id;Pz.find=null;
    let ids=[n];if(CONT(n.kind)){const B=box(n);ids=ids.concat(d.nodes.filter(q=>q!==n&&!(n.kind==='system'&&q.kind==='system')&&(()=>{const b=box(q);return b.cx>B.x&&b.cx<B.x+B.w&&b.cy>B.y&&b.cy<B.y+B.h;})()));}
    Pz.drag={ids,sx:x,sy:y,o:ids.map(q=>[q.x,q.y]),moved:false,pre:JSON.stringify(d)};svg.setPointerCapture(e.pointerId);e.preventDefault();
@@ -183,11 +253,26 @@ function bindCanvas(){const svg=$('#cv');if(!svg)return;
   if(eEl){Pz.sel=eEl.dataset.eid;Pz.find=null;drawCanvas();renderProps();return;}
   if(Pz.sel||Pz.find){Pz.sel=null;Pz.find=null;drawCanvas();renderProps();}
  };
- svg.onpointermove=e=>{const g=Pz.drag;if(!g)return;if(g.sq)return sqMove(e,svg);const [x,y]=pt(e);const dx=x-g.sx,dy=y-g.sy;
+ /* Touch: Das berührte Element darf nicht sofort neu gezeichnet werden, sonst kommt touchstart nicht mehr bei der Zeichenfläche an.
+    Dort wird das Scrollen der Seite unterbunden, sobald etwas gezogen wird (touch-action wirkt auf SVG-Formen nicht zuverlässig). */
+ svg.onpointerdown=e=>{if(e.pointerType!=='touch')return down(e);HOLD=true;try{down(e);}finally{setTimeout(()=>{HOLD=false;drawCanvas();},0);}};
+ if(!svg.dataset.touch){svg.dataset.touch=1;svg.addEventListener('touchstart',e=>{if((Pz.drag||Pz.mode.t!=='select')&&e.cancelable)e.preventDefault();},{passive:false});}
+ svg.onpointermove=e=>{const g=Pz.drag,d=Pz.doc;
+  if(!g){const m=Pz.mode;
+   /* Gummiband, solange eine Linie oder Nachricht auf ihr zweites Ende wartet */
+   if(d.type==='sq'){if(m.t==='sqmsg'&&m.from!=null){const [x]=pt(e);sqPreview(svg,`M${SQX(m.from)},${m.y} L${x},${m.y}`);}}
+   else if(m.t==='edge'&&m.from){const a=d.nodes.find(n=>n.id===m.from);if(a){const [x,y]=pt(e),p=anchor(a,x,y);sqPreview(svg,`M${p[0]},${p[1]} L${x},${y}`);}}
+   return;}
+  if(g.sq)return sqMove(e,svg);const [x,y]=pt(e);const dx=x-g.sx,dy=y-g.sy;
+  if(g.link){if(!g.moved&&Math.hypot(dx,dy)<5)return;g.moved=true;const a=d.nodes.find(n=>n.id===g.link),t=linkTarget(x,y,g.link),id=t?t.id:null;
+   if(id!==g.to){g.to=id;svg.querySelectorAll('.nd.tgt').forEach(q=>q.classList.remove('tgt'));const q=id&&svg.querySelector('.nd[data-id="'+id+'"]');if(q)q.classList.add('tgt');}
+   const p=anchor(a,x,y);sqPreview(svg,`M${p[0]},${p[1]} L${x},${y}`);return;}
   if(g.rs){const n=g.rs;if(n.kind==='bar'){n.len=Math.max(50,Math.round((n.vert?g.h+dy:g.w+dx)));}else{n.w=Math.max(140,Math.round(g.w+dx));n.h=Math.max(100,Math.round(g.h+dy));}drawCanvas();return;}
   if(!g.moved&&Math.hypot(dx,dy)<3)return;if(!g.moved){g.moved=true;Pz.undo.push(g.pre);}
   g.ids.forEach((n,i)=>{n.x=Math.max(2,Math.round(g.o[i][0]+dx));n.y=Math.max(2,Math.round(g.o[i][1]+dy));});drawCanvas();};
- svg.onpointerup=svg.onpointercancel=e=>{if(Pz.drag&&Pz.drag.sq)return sqUp(e,svg);if(Pz.drag){touchDoc();Pz.drag=null;}};
+ svg.onpointerup=svg.onpointercancel=e=>{const g=Pz.drag;if(g&&g.sq)return sqUp(e,svg);
+  if(g&&g.link){Pz.drag=null;if(e.type==='pointerup'&&g.moved&&g.to)addEdge(curEdge(),g.link,g.to);else drawCanvas();return;}
+  if(g){touchDoc();Pz.drag=null;}};
 }
 document.addEventListener('keydown',e=>{if(!$('#cv')||!Pz.doc)return;const tg=e.target.tagName;const typing=tg==='INPUT'||tg==='TEXTAREA'||tg==='SELECT';
  if(e.key==='Escape'){setMode({t:'select'});if(typing)e.target.blur();}
@@ -249,10 +334,12 @@ function drawSQ(d){const X=i=>110+i*185,idx={};d.parts.forEach((p,i)=>idx[p.id]=
   else if(r.kind==='end'){const f=stack.pop();y+=16;rowY[r.id]=y;if(f){f.bot=y;frags.push(f);}y+=6;}
  });
  while(stack.length){const f=stack.pop();y+=16;f.bot=y;frags.push(f);}
- const bottom=y+46;Object.keys(open).forEach(id=>open[id].forEach(s=>acts.push([idx[id],s,Math.min(bottom-20,y+10)])));
+ /* Im Editor ragen die Lebenslinien etwas weiter nach unten, damit Platz zum Ansetzen der nächsten Nachricht bleibt */
+ const bottom=y+46+(EDIT?44:0);Object.keys(open).forEach(id=>open[id].forEach(s=>acts.push([idx[id],s,Math.min(bottom-20,y+10)])));
  let s='';
  d.parts.forEach((p,i)=>{const x=X(i),top=created[p.id]!=null?created[p.id]:44,end=destroyed[p.id]!=null?destroyed[p.id]:bottom;
   s+=L(x,top+(p.actor?40:16),x,end,{d:1});
+  if(EDIT)s+=`<rect class="ll" data-ll="${i}" x="${x-18}" y="${top+(p.actor?40:16)}" width="36" height="${Math.max(0,end-top-(p.actor?40:16))}"/>`;
   if(destroyed[p.id]!=null)s+=L(x-9,end-9,x+9,end+9)+L(x+9,end-9,x-9,end+9);});
  acts.forEach(([i,a,b])=>{if(i!=null)s+=`<rect class="w" x="${X(i)-6}" y="${a}" width="12" height="${Math.max(10,b-a)}"/>`;});
  frags.sort((a,b)=>a.depth-b.depth).forEach(f=>{const all=f.hi<0;const lo=all?0:f.lo,hi=all?Math.max(0,d.parts.length-1):f.hi;const x1=X(lo)-78+f.depth*8,x2=X(hi)+(f.selfHi===hi?150:78)-f.depth*8;
@@ -263,6 +350,6 @@ function drawSQ(d){const X=i=>110+i*185,idx={};d.parts.forEach((p,i)=>idx[p.id]=
   const sx=Pz.sel===p.id||(Pz.mode.t==='sqmsg'&&Pz.mode.from===i)?' selx':'';s+=`<g class="ph" data-pid="${p.id}">`;
   if(p.actor)s+=`<rect x="${x-40}" y="${top-16}" width="80" height="66" fill="transparent"/><circle class="w${sx}" cx="${x}" cy="${top-6}" r="7"/>${P(`M${x},${top+1} V${top+17} M${x-11},${top+7} H${x+11} M${x},${top+17} L${x-9},${top+30} M${x},${top+17} L${x+9},${top+30}`)}<text class="lbl" x="${x}" y="${top+45}" font-size="12.5" text-anchor="middle">${esc(p.name||'')}</text>`;
   else{const w=Math.max(96,tw([p.name||''],12.5)+22);s+=`<rect class="w${sx}" x="${x-w/2}" y="${top}" width="${w}" height="28"/>${T(x,top+18,esc(p.name||''),{fs:12.5,u:1})}`;}s+='</g>';});
- if(!d.parts.length)s+=T(300,140,'Klicke über dem Feld auf «＋ Objekt» oder «＋ Akteur»',{fs:15});
+ if(!d.parts.length)s+=T(300,140,'Ziehe «＋ Akteur» oder «＋ Objekt» von oben hierher',{fs:15});
  return {svg:s,w:Math.max(760,X(Math.max(0,d.parts.length-1))+220),h:Math.max(360,bottom+30),rowY,bottom,X};
 }

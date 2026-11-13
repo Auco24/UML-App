@@ -153,7 +153,7 @@ select:focus,input:focus,textarea:focus,button:focus-visible{outline:2px solid v
 .ed-canvas{overflow:auto;max-height:680px;min-height:420px;background:
   linear-gradient(var(--line) 1px,transparent 1px) 0 0/100% 24px,linear-gradient(90deg,var(--line) 1px,transparent 1px) 0 0/24px 100%,var(--card);background-blend-mode:normal}
 .ed-canvas svg{display:block;max-width:none;touch-action:pan-x pan-y}
-.ed-canvas svg .nd{cursor:move;touch-action:none}
+.ed-canvas svg .nd{cursor:move}
 .ed-canvas svg .eg{cursor:pointer}
 .ed-canvas svg.adding{cursor:crosshair}
 .ed-side{border-left:1px solid var(--line);padding:12px;font-size:14px;min-width:0}
@@ -227,7 +227,27 @@ textarea.oans{font-family:inherit;font-size:15px;margin-top:8px}
 .sqd>summary{padding:10px 12px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
 .sqd .sqb{border-top:1px solid var(--line)}
 #sqprev{stroke:var(--accent);stroke-width:2;stroke-dasharray:6 4;fill:none;pointer-events:none}
-.ed-canvas svg .ph{cursor:pointer}
+.ed-canvas svg .ph{cursor:grab}
+/* ---------- Bausteine ziehen und Linien verbinden ---------- */
+.tool.pal{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+body.paldrag,.ed-canvas svg{user-select:none;-webkit-user-select:none}
+body.paldrag{cursor:grabbing}
+.palghost{position:fixed;left:0;top:0;z-index:1000;pointer-events:none;opacity:.55}
+.palghost.ok{opacity:.92}
+.palghost svg{display:block;overflow:visible}
+.palghost.pill{background:var(--accent);color:var(--on-accent);font-size:13px;font-weight:650;padding:5px 10px;border-radius:8px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.ed-canvas.drop{outline:2px dashed var(--accent);outline-offset:-3px}
+svg .halo{fill:transparent;stroke:none}
+svg .ch{opacity:0;cursor:crosshair;transition:opacity .12s}
+svg .chh{fill:transparent;stroke:none}
+svg .chd{fill:var(--accent);stroke:var(--card);stroke-width:2}
+.ed-canvas svg .nd:hover .ch,.ed-canvas svg .nd.sel .ch{opacity:1}
+.ed-canvas svg.linking .ch,.ed-canvas svg.adding .ch{opacity:0}
+.ed-canvas svg .nd.tgt .w,.ed-canvas svg .nd.tgt .s{stroke:var(--accent);stroke-width:2.6}
+.ed-canvas svg .nd.tgt .f{stroke:var(--accent);stroke-width:4}
+svg .ll{fill:transparent;stroke:none;cursor:crosshair}
+.ed-canvas svg .ll:hover{fill:var(--accent);fill-opacity:.13}
+@media (prefers-reduced-motion:reduce){svg .ch{transition:none}}
 
 .app{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
 main{padding-left:max(36px,env(safe-area-inset-left,0px));padding-right:max(36px,env(safe-area-inset-right,0px));min-width:0}
@@ -899,6 +919,16 @@ const CONT=k=>k==='system'||k==='lane';
 
 let Pz={type:'uc',task:null,doc:null,sel:null,mode:{t:'select'},undo:[],drag:null,find:null,fb:null,ai:{turns:[],busy:false,ctl:null,out:''}};
 if(!store.draw)store.draw={};if(!store.drawBest)store.drawBest={};if(!store.custom)store.custom={};
+/* EDIT ist nur gesetzt, während die Zeichenfläche des Editors gezeichnet wird (nicht bei Lösungen oder beim Bildexport) */
+let EDIT=false;
+/* HOLD verschiebt das Neuzeichnen kurz, solange ein Finger gerade aufsetzt (siehe bindCanvas) */
+let HOLD=false;
+/* Auf Touch-Geräten wird das Textfeld nicht automatisch fokussiert, sonst klappt bei jedem Baustein die Tastatur auf */
+const finePtr=()=>!window.matchMedia||!matchMedia('(pointer:coarse)').matches;
+/* An Rahmen und Notizen hängen keine Linien */
+const canLink=n=>!!n&&!CONT(n.kind)&&n.kind!=='note';
+/* Linienart, die beim Ziehen von einem Verbindungspunkt entsteht (je Diagrammart gemerkt) */
+const curEdge=()=>{Pz.ek=Pz.ek||{};const p=PAL[Pz.type];return Pz.ek[Pz.type]||(p?p.edges[0][0]:null);};
 
 const linesOf=s=>String(s||'').split('\n').map(x=>x.trim()).filter(Boolean);
 function wrapT(t,max=20){const out=[];String(t||'').split('\n').forEach(par=>{let line='';par.split(/\s+/).forEach(w=>{if(line&&(line+' '+w).length>max){out.push(line);line=w;}else line=(line+' '+w).trim();});out.push(line);});return out;}
@@ -962,9 +992,14 @@ function drawNode(n){const b=box(n),k=n.kind;const st=(Pz.sel===n.id||(Pz.mode.t
  else if(k==='flowfinal'){s=`<circle class="w${st}" cx="${b.cx}" cy="${b.cy}" r="12"/>${L(b.cx-8,b.cy-8,b.cx+8,b.cy+8)}${L(b.cx+8,b.cy-8,b.cx-8,b.cy+8)}`;}
  else if(k==='choice'||k==='diamond'){s=`<path class="w${st}" d="M${b.cx},${b.y} L${b.x+b.w},${b.cy} L${b.cx},${b.y+b.h} L${b.x},${b.cy} Z"/>`;}
  else if(k==='bar'){s=`<rect x="${b.x-6}" y="${b.y-6}" width="${b.w+12}" height="${b.h+12}" fill="transparent"/><rect class="f${st}" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}"/>`;}
- let h='';
+ let h='',halo='',ch='';
  if(Pz.sel===n.id&&(CONT(k)||k==='bar'))h=`<rect class="handle" data-h="${n.id}" x="${b.x+b.w-7}" y="${b.y+b.h-7}" width="14" height="14" rx="3"/>`;
- return `<g class="nd" data-id="${n.id}">${s}</g>${h}`;
+ /* Nur im Editor: unsichtbarer Rand als Hover-Zone und vier blaue Verbindungspunkte, von denen man Linien zieht */
+ if(EDIT&&canLink(n)){const ox=k==='actor'?26:12,ex=k==='actor'?22:0;
+  halo=`<rect class="halo" x="${b.x-ox-12}" y="${b.y-24}" width="${b.w+2*ox+24}" height="${b.h+ex+48}"/>`;
+  /* Jeder Punkt hat eine größere unsichtbare Greiffläche, damit er auch mit dem Finger zu treffen ist */
+  ch=[[b.cx,b.y-12],[b.x+b.w+ox,b.cy],[b.cx,b.y+b.h+ex+12],[b.x-ox,b.cy]].map(([x,y])=>`<circle class="ch chh" data-ch="${n.id}" cx="${x}" cy="${y}" r="11"/><circle class="ch chd" data-ch="${n.id}" cx="${x}" cy="${y}" r="6"/>`).join('');}
+ return `<g class="nd${EDIT&&Pz.sel===n.id?' sel':''}" data-id="${n.id}">${halo}${s}${ch}</g>${h}`;
 }
 function drawEdge(e,doc){const g=edgeGeom(e,doc);if(!g)return '';const k=EK[e.kind]||{};const st=(Pz.sel===e.id?' selx':'')+(Pz.find&&Pz.find.includes(e.id)?' hl':'');
  let s=`<path class="hit" d="${g.d}"/><path class="s${k.d?' d':''}${st}" d="${g.d}" ${k.e?`marker-end="url(#${k.e})"`:''} ${k.s?`marker-start="url(#${k.s})"`:''}/>`;
@@ -976,12 +1011,13 @@ function drawEdge(e,doc){const g=edgeGeom(e,doc);if(!g)return '';const k=EK[e.ki
  if(e.m2)s+=`<text class="lbl" x="${g.p2[0]-g.u[0]*26+nx*11}" y="${g.p2[1]-g.u[1]*26+ny*11+4}" font-size="12" text-anchor="middle">${esc(e.m2)}</text>`;
  return `<g class="eg" data-eid="${e.id}">${s}</g>`;
 }
-function drawCanvas(){const svg=$('#cv');if(!svg)return;const d=Pz.doc;
+function drawCanvas(){const svg=$('#cv');if(!svg||HOLD)return;const d=Pz.doc;svg.classList.toggle('linking',!!(Pz.drag&&Pz.drag.link));EDIT=true;try{
  if(d.type==='sq'){const r=drawSQ(d);Pz.sq=r;svg.setAttribute('width',Math.max(r.w,900));svg.setAttribute('height',Math.max(r.h+90,520));svg.classList.toggle('adding',Pz.mode.t!=='select');svg.innerHTML=r.svg;return;}
  let mx=0,my=0;d.nodes.forEach(n=>{const b=box(n);mx=Math.max(mx,b.x+b.w);my=Math.max(my,b.y+b.h);});
  svg.setAttribute('width',Math.max(980,mx+260));svg.setAttribute('height',Math.max(620,my+220));
  svg.classList.toggle('adding',Pz.mode.t!=='select');
  svg.innerHTML=d.nodes.filter(n=>CONT(n.kind)).map(drawNode).join('')+d.edges.map(e=>drawEdge(e,d)).join('')+d.nodes.filter(n=>!CONT(n.kind)).map(drawNode).join('');
+ }finally{EDIT=false;}
 }
 
 /* ----- Umgang mit dem Dokument ----- */
@@ -998,10 +1034,10 @@ function addNode(kind,x,y){snap();const d=Pz.doc;const n={id:nid('n'),kind:kind=
  if(n.kind==='class'){n.attrs='';n.methods='';}
  const [w,h]=size(n);n.x=Math.max(4,Math.round(x-(CONT(kind)?20:w/2)));n.y=Math.max(4,Math.round(y-(CONT(kind)?16:h/2)));
  d.nodes.push(n);Pz.sel=n.id;Pz.mode={t:'select'};touchDoc();refreshEd();
- const f=$('#p_text');if(f){f.focus();f.select&&f.select();}
+ const f=$('#p_text');if(f&&finePtr()){f.focus();f.select&&f.select();}
 }
 function addEdge(kind,from,to){snap();const e={id:nid('e'),kind,from,to,label:''};Pz.doc.edges.push(e);Pz.sel=e.id;Pz.mode={t:'select'};touchDoc();refreshEd();
- const f=$('#p_label');if(f&&(kind==='trans'||kind==='flow'))f.focus();}
+ const f=$('#p_label');if(f&&(kind==='trans'||kind==='flow')&&finePtr())f.focus();}
 function delSel(){const d=Pz.doc;if(!Pz.sel)return;if(d.type==='sq')return sqDel();snap();
  if(d.nodes.some(n=>n.id===Pz.sel)){d.nodes=d.nodes.filter(n=>n.id!==Pz.sel);d.edges=d.edges.filter(e=>e.from!==Pz.sel&&e.to!==Pz.sel);}
  else d.edges=d.edges.filter(e=>e.id!==Pz.sel);
@@ -1011,17 +1047,67 @@ function prev(){const e=Pz.doc.edges.find(x=>x.id===Pz.sel);if(!e)return;snap();
 function setMode(m){Pz.mode=m;renderTools();drawCanvas();renderProps();}
 
 /* ----- Oberfläche ----- */
-function renderTools(){const el=$('#tools');if(!el)return;if(Pz.type==='sq')return sqTools(el);const p=PAL[Pz.type];if(!p){el.innerHTML='';return;}
- const on=(t,k)=>Pz.mode.t===t&&Pz.mode.kind===k?' on':'';
- el.innerHTML=`<button class="tool${Pz.mode.t==='select'?' on':''}" onclick="setMode({t:'select'})">🖱 Auswahl</button><span class="sep"></span>`+
-  p.nodes.map(([k,l])=>`<button class="tool${on('add',k)}" onclick="setMode({t:'add',kind:'${k}'})">＋ ${l}</button>`).join('')+`<span class="sep"></span>`+
-  p.edges.map(([k,l])=>`<button class="tool edge${on('edge',k)}" onclick="setMode({t:'edge',kind:'${k}',from:null})">${l}</button>`).join('')+
-  `<span class="sep"></span><button class="tool" onclick="undo()">↶ Rückgängig</button><button class="tool" id="clr" onclick="clearDoc(this)">🗑 Leeren</button>`;
- const h=$('#edhint');if(h){const m=Pz.mode;
-  h.textContent=m.t==='add'?`Klicke ins Feld, um zu setzen: ${KN[m.kind==='iface'?'class':m.kind]||m.kind}. Esc bricht ab.`:
-   m.t==='edge'?(m.from?'Klicke jetzt auf das Element, zu dem die Linie führt (an diesem Ende sitzt die Pfeilspitze).':(m.kind==='agg'||m.kind==='comp'?'Klicke zuerst auf die Klasse, an der die Raute stehen soll, dann auf die zweite Klasse.':'Klicke auf das Element, an dem die Linie beginnt, dann auf das zweite Element.')):
-   'Ziehe Elemente mit der Maus. Klicke auf ein Element oder eine Linie, um den Text rechts zu ändern. Entf löscht.';}
+const cancelBtn=()=>Pz.mode.t!=='select'?`<button class="tool" onclick="setMode({t:'select'})">✕ Abbrechen</button>`:'';
+function renderTools(){const el=$('#tools');if(!el)return;palEnd();bindTools(el);if(Pz.type==='sq')return sqTools(el);const p=PAL[Pz.type];if(!p){el.innerHTML='';return;}
+ const ek=curEdge();
+ el.innerHTML=p.nodes.map(([k,l])=>`<button class="tool pal" data-pal="node:${k}" title="Auf die Zeichenfläche ziehen oder anklicken">＋ ${l}</button>`).join('')+`<span class="sep"></span>`+
+  p.edges.map(([k,l])=>`<button class="tool edge pal${ek===k?' on':''}" data-pal="edge:${k}" aria-pressed="${ek===k}" title="Linienart für die nächste Linie">${l}</button>`).join('')+
+  `<span class="sep"></span>${cancelBtn()}<button class="tool" onclick="undo()">↶ Rückgängig</button><button class="tool" id="clr" onclick="clearDoc(this)">🗑 Leeren</button>`;
+ const h=$('#edhint');if(h){const m=Pz.mode,k=EK[ek]||{};
+  h.textContent=m.t==='edge'&&m.from?'Klicke jetzt auf das Element, zu dem die Linie führt. Esc bricht ab.':
+   'Ziehe einen Baustein von oben auf die Zeichenfläche. Für eine Linie ziehst du von einem blauen Punkt am Rand eines Elements zum nächsten Element.'+
+   (k.s?' Die Raute sitzt an dem Element, bei dem du beginnst.':k.e?' Die Pfeilspitze sitzt an dem Element, bei dem du loslässt.':'')+' Entf löscht.';}
 }
+
+/* ----- Bausteine aus der Palette ziehen ----- */
+let Pal=null,palAt=0;
+function palEnd(){if(Pal&&Pal.ghost)Pal.ghost.remove();Pal=null;const cv=$('.ed-canvas');if(cv)cv.classList.remove('drop');document.body.classList.remove('paldrag');}
+/* Position des Zeigers auf der Zeichenfläche oder null, wenn er außerhalb des sichtbaren Bereichs liegt */
+function palOver(e){const svg=$('#cv'),cv=svg&&svg.closest('.ed-canvas');if(!cv)return null;const c=cv.getBoundingClientRect();
+ if(e.clientX<c.left||e.clientX>c.right||e.clientY<c.top||e.clientY>c.bottom)return null;const r=svg.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top];}
+/* Vorschau, die beim Ziehen am Zeiger hängt: bei Elementen die echte Form, sonst ein Schildchen mit dem Namen */
+function palGhost(pal,btn){const [t,k]=pal.split(':');const g=document.createElement('div');g.className='palghost';
+ if(t==='node'){const n={id:'_',kind:k==='iface'?'class':k,x:0,y:0,text:DEFTXT[k]||''};if(k==='iface'){n.stereo='interface';n.text='Interface';}if(n.kind==='class'){n.attrs='';n.methods='';}
+  const [w,h]=size(n),px=k==='actor'?22:3,py=3;n.x=px;n.y=py;
+  g.innerHTML=`<svg class="sym" xmlns="http://www.w3.org/2000/svg" width="${w+2*px}" height="${h+2*py+(k==='actor'?22:0)}">${drawNode(n)}</svg>`;
+  g.ox=px+(CONT(k)?20:w/2);g.oy=py+(CONT(k)?16:h/2);}
+ else{g.classList.add('pill');g.textContent=btn.textContent.trim();g.ox=-12;g.oy=-14;}
+ return g;}
+function bindTools(el){if(el.dataset.bound)return;el.dataset.bound=1;
+ el.addEventListener('pointerdown',e=>{const b=e.target.closest('[data-pal]');if(!b||b.disabled||e.button)return;palEnd();
+  Pal={b,id:e.pointerId,pal:b.dataset.pal,sx:e.clientX,sy:e.clientY,moved:false,ghost:null};try{b.setPointerCapture(e.pointerId);}catch(_){}
+  /* verhindert, dass beim Ziehen Text auf der Seite markiert wird */
+  e.preventDefault();});
+ el.addEventListener('pointermove',e=>{const g=Pal;if(!g||e.pointerId!==g.id)return;
+  if(!g.moved){if(Math.hypot(e.clientX-g.sx,e.clientY-g.sy)<6)return;g.moved=true;g.ghost=palGhost(g.pal,g.b);document.body.appendChild(g.ghost);document.body.classList.add('paldrag');}
+  g.ghost.style.transform=`translate(${Math.round(e.clientX-g.ghost.ox)}px,${Math.round(e.clientY-g.ghost.oy)}px)`;
+  const ok=!!palOver(e);g.ghost.classList.toggle('ok',ok);const cv=$('.ed-canvas');if(cv)cv.classList.toggle('drop',ok);});
+ const end=e=>{const g=Pal;if(!g||e.pointerId!==g.id)return;palEnd();if(e.type!=='pointerup')return;palAt=performance.now();
+  if(!g.moved)palClick(g.pal);else{const p=palOver(e);if(p)palDrop(g.pal,p[0],p[1]);}};
+ el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);
+ /* Maus und Finger sind mit pointerup schon erledigt. Das click-Ereignis zählt nur noch für die Tastatur (detail = 0). */
+ el.addEventListener('click',e=>{const b=e.target.closest('[data-pal]');if(!b||b.disabled)return;if(e.detail!==0&&performance.now()-palAt<800)return;palClick(b.dataset.pal);});
+}
+/* Oberstes verbindbares Element an einem Punkt; das Startelement zählt nur bei Linienarten, die eine Schleife erlauben */
+function linkTarget(x,y,from){const d=Pz.doc;for(let i=d.nodes.length-1;i>=0;i--){const n=d.nodes[i];if(!canLink(n))continue;const b=box(n),own=n.id===from,p=own?0:8,ex=n.kind==='actor'?22:0;
+  if(x>=b.x-p&&x<=b.x+b.w+p&&y>=b.y-p&&y<=b.y+b.h+ex+p){if(own&&!['trans','assoc','agg','comp'].includes(curEdge()))continue;return n;}}
+ return null;}
+/* Freier Platz im sichtbaren Bereich für ein Element, das per Klick statt per Ziehen eingefügt wird */
+function freeSpot(kind){const cv=$('.ed-canvas'),d=Pz.doc,sl=cv?cv.scrollLeft:0,st=cv?cv.scrollTop:0,cw=cv?cv.clientWidth:700,chh=cv?cv.clientHeight:420;
+ if(kind==='lane'){const ls=d.nodes.filter(n=>n.kind==='lane');if(ls.length){const r=Math.max(...ls.map(n=>box(n).x+box(n).w));return [r+20,Math.min(...ls.map(n=>n.y))+16];}}
+ if(CONT(kind)){let x=sl+44,y=st+40;while(d.nodes.some(n=>CONT(n.kind)&&Math.abs(n.x-(x-20))<24&&Math.abs(n.y-(y-16))<24)){x+=30;y+=30;}return [x,y];}
+ const t={kind:kind==='iface'?'class':kind,x:0,y:0,text:DEFTXT[kind]||''},[w,h]=size(t);let x=sl+cw/2,y=st+Math.min(chh,460)/2;
+ const hit=()=>d.nodes.some(n=>{if(CONT(n.kind))return false;const b=box(n);return Math.abs(b.cx-x)<(b.w+w)/2+14&&Math.abs(b.cy-y)<(b.h+h)/2+14;});
+ for(let i=0;i<40&&hit();i++){x+=34;y+=30;}
+ return [x,y];}
+function palDrop(pal,x,y){const [t,k]=pal.split(':');
+ if(t==='node')return addNode(k,x,y);
+ if(t==='edge'){curEdge();Pz.ek[Pz.type]=k;const n=linkTarget(x,y);setMode(n?{t:'edge',kind:k,from:n.id}:{t:'select'});return;}
+ sqDrop(t,k,x,y);}
+function palClick(pal){const [t,k]=pal.split(':');
+ if(t==='node'){const p=freeSpot(k);addNode(k,p[0],p[1]);return;}
+ if(t==='edge'){curEdge();Pz.ek[Pz.type]=k;setMode({t:'select'});return;}
+ sqClick(t,k);}
 function clearDoc(btn){if(btn.dataset.sure){snap();Pz.doc=newDoc(Pz.type);Pz.sel=null;Pz.fb=null;touchDoc();refreshEd();renderFb();}else{btn.dataset.sure=1;btn.textContent='Wirklich leeren?';setTimeout(()=>{if(btn.isConnected){delete btn.dataset.sure;btn.textContent='🗑 Leeren';}},3000);}}
 function renderProps(){const el=$('#props');if(!el)return;const d=Pz.doc;if(d.type==='sq')return sqProps(el);
  const n=d.nodes.find(x=>x.id===Pz.sel),e=d.edges.find(x=>x.id===Pz.sel);
@@ -1042,20 +1128,24 @@ function renderProps(){const el=$('#props');if(!el)return;const d=Pz.doc;if(d.ty
   if(!['include','extend','gen','real'].includes(e.kind))h+=`<label for="p_label">${e.kind==='trans'?'Beschriftung':e.kind==='flow'?'Guard (nur nach einer Decision)':'Name (optional)'}</label>${inp('p_label','label',e.label,ph)}`;
   if(['assoc','agg','comp'].includes(e.kind)&&Pz.type==='cl')h+=`<label for="p_m1">Multiplizität bei „${esc(refName(a))}“</label>${inp('p_m1','m1',e.m1,'1, 0..1, 0..*, 1..*')}<label for="p_m2">Multiplizität bei „${esc(refName(b))}“</label>${inp('p_m2','m2',e.m2,'1, 0..1, 0..*, 1..*')}`;
   h+=`<p style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap"><button class="tool" onclick="prev()">⇄ Umdrehen</button><button class="tool" onclick="delSel()">✕ Löschen</button></p>`;el.innerHTML=h;return;}
- el.innerHTML=`<p class="hint">Nichts ausgewählt.<br><br><b>So zeichnest du</b><br>1. Schaltfläche «＋ …» und Klick ins Feld setzt ein Element.<br>2. Linien-Schaltfläche, dann Klick auf zwei Elemente.<br>3. Klick auf ein Element: Bearbeiten hier.<br>4. «Prüfen» unter dem Feld startet den Bot.</p>`;
+ el.innerHTML=`<p class="hint">Nichts ausgewählt.<br><br><b>So zeichnest du</b><br>1. Einen Baustein «＋ …» von oben auf die Fläche ziehen.<br>2. Linie: von einem blauen Punkt am Rand eines Elements zum nächsten Element ziehen. Es gilt die oben markierte Linienart.<br>3. Klick auf ein Element oder eine Linie: Bearbeiten hier.<br>4. «Prüfen» unter dem Feld startet den Bot.</p>`;
 }
 const refName=n=>!n?'?':(n.text&&!['initial','final','flowfinal','choice','diamond','bar'].includes(n.kind)?n.text.replace(/\n/g,' '):KN[n.kind]+' '+n.id);
 function refreshEd(){renderTools();drawCanvas();renderProps();if(Pz.doc.type==='sq')renderSQB();}
 
 function bindCanvas(){const svg=$('#cv');if(!svg)return;
  const pt=e=>{const r=svg.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top];};
- svg.onpointerdown=e=>{const d=Pz.doc;if(d.type==='sq')return sqDown(e,svg);const [x,y]=pt(e);
-  const hEl=e.target.closest('[data-h]'),nEl=e.target.closest('[data-id]'),eEl=e.target.closest('[data-eid]');
-  if(Pz.mode.t==='add'){addNode(Pz.mode.kind,x,y);return;}
+ const down=e=>{const d=Pz.doc;if(d.type==='sq')return sqDown(e,svg);const [x,y]=pt(e);
+  const hEl=e.target.closest('[data-h]'),cEl=e.target.closest('[data-ch]');let nEl=e.target.closest('[data-id]'),eEl=e.target.closest('[data-eid]');
+  /* Der unsichtbare Rand eines Elements soll Linien und Nachbarelemente darunter nicht verdecken */
+  if(nEl&&e.target.classList.contains('halo')){for(const q of document.elementsFromPoint(e.clientX,e.clientY)){if(!svg.contains(q)||q===svg)break;if(q.classList.contains('halo'))continue;
+    const g=q.closest('[data-eid]'),m=q.closest('[data-id]');
+    if(g){eEl=g;nEl=null;}else if(m&&m!==nEl&&canLink(d.nodes.find(z=>z.id===m.dataset.id)))nEl=m;break;}}
   if(Pz.mode.t==='edge'){const n=nEl&&d.nodes.find(q=>q.id===nEl.dataset.id);
-   if(n&&!CONT(n.kind)&&n.kind!=='note'){if(!Pz.mode.from){Pz.mode.from=n.id;renderTools();drawCanvas();}else addEdge(Pz.mode.kind,Pz.mode.from,n.id);}
-   else{Pz.mode.from=null;renderTools();drawCanvas();}return;}
+   if(canLink(n)&&Pz.mode.from)addEdge(Pz.mode.kind,Pz.mode.from,n.id);else setMode({t:'select'});return;}
   if(hEl){const n=d.nodes.find(q=>q.id===hEl.dataset.h);snap();const [w,h]=size(n);Pz.drag={rs:n,sx:x,sy:y,w,h};svg.setPointerCapture(e.pointerId);e.preventDefault();return;}
+  if(cEl&&nEl&&nEl.dataset.id===cEl.dataset.ch&&(e.pointerType==='mouse'||Pz.sel===cEl.dataset.ch)){const n=d.nodes.find(q=>q.id===cEl.dataset.ch);const ch=Pz.sel!==n.id;Pz.sel=n.id;Pz.find=null;
+   Pz.drag={link:n.id,sx:x,sy:y,moved:false,to:null};svg.setPointerCapture(e.pointerId);e.preventDefault();drawCanvas();if(ch)renderProps();return;}
   if(nEl){const n=d.nodes.find(q=>q.id===nEl.dataset.id);const ch=Pz.sel!==n.id;Pz.sel=n.id;Pz.find=null;
    let ids=[n];if(CONT(n.kind)){const B=box(n);ids=ids.concat(d.nodes.filter(q=>q!==n&&!(n.kind==='system'&&q.kind==='system')&&(()=>{const b=box(q);return b.cx>B.x&&b.cx<B.x+B.w&&b.cy>B.y&&b.cy<B.y+B.h;})()));}
    Pz.drag={ids,sx:x,sy:y,o:ids.map(q=>[q.x,q.y]),moved:false,pre:JSON.stringify(d)};svg.setPointerCapture(e.pointerId);e.preventDefault();
@@ -1063,11 +1153,26 @@ function bindCanvas(){const svg=$('#cv');if(!svg)return;
   if(eEl){Pz.sel=eEl.dataset.eid;Pz.find=null;drawCanvas();renderProps();return;}
   if(Pz.sel||Pz.find){Pz.sel=null;Pz.find=null;drawCanvas();renderProps();}
  };
- svg.onpointermove=e=>{const g=Pz.drag;if(!g)return;if(g.sq)return sqMove(e,svg);const [x,y]=pt(e);const dx=x-g.sx,dy=y-g.sy;
+ /* Touch: Das berührte Element darf nicht sofort neu gezeichnet werden, sonst kommt touchstart nicht mehr bei der Zeichenfläche an.
+    Dort wird das Scrollen der Seite unterbunden, sobald etwas gezogen wird (touch-action wirkt auf SVG-Formen nicht zuverlässig). */
+ svg.onpointerdown=e=>{if(e.pointerType!=='touch')return down(e);HOLD=true;try{down(e);}finally{setTimeout(()=>{HOLD=false;drawCanvas();},0);}};
+ if(!svg.dataset.touch){svg.dataset.touch=1;svg.addEventListener('touchstart',e=>{if((Pz.drag||Pz.mode.t!=='select')&&e.cancelable)e.preventDefault();},{passive:false});}
+ svg.onpointermove=e=>{const g=Pz.drag,d=Pz.doc;
+  if(!g){const m=Pz.mode;
+   /* Gummiband, solange eine Linie oder Nachricht auf ihr zweites Ende wartet */
+   if(d.type==='sq'){if(m.t==='sqmsg'&&m.from!=null){const [x]=pt(e);sqPreview(svg,`M${SQX(m.from)},${m.y} L${x},${m.y}`);}}
+   else if(m.t==='edge'&&m.from){const a=d.nodes.find(n=>n.id===m.from);if(a){const [x,y]=pt(e),p=anchor(a,x,y);sqPreview(svg,`M${p[0]},${p[1]} L${x},${y}`);}}
+   return;}
+  if(g.sq)return sqMove(e,svg);const [x,y]=pt(e);const dx=x-g.sx,dy=y-g.sy;
+  if(g.link){if(!g.moved&&Math.hypot(dx,dy)<5)return;g.moved=true;const a=d.nodes.find(n=>n.id===g.link),t=linkTarget(x,y,g.link),id=t?t.id:null;
+   if(id!==g.to){g.to=id;svg.querySelectorAll('.nd.tgt').forEach(q=>q.classList.remove('tgt'));const q=id&&svg.querySelector('.nd[data-id="'+id+'"]');if(q)q.classList.add('tgt');}
+   const p=anchor(a,x,y);sqPreview(svg,`M${p[0]},${p[1]} L${x},${y}`);return;}
   if(g.rs){const n=g.rs;if(n.kind==='bar'){n.len=Math.max(50,Math.round((n.vert?g.h+dy:g.w+dx)));}else{n.w=Math.max(140,Math.round(g.w+dx));n.h=Math.max(100,Math.round(g.h+dy));}drawCanvas();return;}
   if(!g.moved&&Math.hypot(dx,dy)<3)return;if(!g.moved){g.moved=true;Pz.undo.push(g.pre);}
   g.ids.forEach((n,i)=>{n.x=Math.max(2,Math.round(g.o[i][0]+dx));n.y=Math.max(2,Math.round(g.o[i][1]+dy));});drawCanvas();};
- svg.onpointerup=svg.onpointercancel=e=>{if(Pz.drag&&Pz.drag.sq)return sqUp(e,svg);if(Pz.drag){touchDoc();Pz.drag=null;}};
+ svg.onpointerup=svg.onpointercancel=e=>{const g=Pz.drag;if(g&&g.sq)return sqUp(e,svg);
+  if(g&&g.link){Pz.drag=null;if(e.type==='pointerup'&&g.moved&&g.to)addEdge(curEdge(),g.link,g.to);else drawCanvas();return;}
+  if(g){touchDoc();Pz.drag=null;}};
 }
 document.addEventListener('keydown',e=>{if(!$('#cv')||!Pz.doc)return;const tg=e.target.tagName;const typing=tg==='INPUT'||tg==='TEXTAREA'||tg==='SELECT';
  if(e.key==='Escape'){setMode({t:'select'});if(typing)e.target.blur();}
@@ -1129,10 +1234,12 @@ function drawSQ(d){const X=i=>110+i*185,idx={};d.parts.forEach((p,i)=>idx[p.id]=
   else if(r.kind==='end'){const f=stack.pop();y+=16;rowY[r.id]=y;if(f){f.bot=y;frags.push(f);}y+=6;}
  });
  while(stack.length){const f=stack.pop();y+=16;f.bot=y;frags.push(f);}
- const bottom=y+46;Object.keys(open).forEach(id=>open[id].forEach(s=>acts.push([idx[id],s,Math.min(bottom-20,y+10)])));
+ /* Im Editor ragen die Lebenslinien etwas weiter nach unten, damit Platz zum Ansetzen der nächsten Nachricht bleibt */
+ const bottom=y+46+(EDIT?44:0);Object.keys(open).forEach(id=>open[id].forEach(s=>acts.push([idx[id],s,Math.min(bottom-20,y+10)])));
  let s='';
  d.parts.forEach((p,i)=>{const x=X(i),top=created[p.id]!=null?created[p.id]:44,end=destroyed[p.id]!=null?destroyed[p.id]:bottom;
   s+=L(x,top+(p.actor?40:16),x,end,{d:1});
+  if(EDIT)s+=`<rect class="ll" data-ll="${i}" x="${x-18}" y="${top+(p.actor?40:16)}" width="36" height="${Math.max(0,end-top-(p.actor?40:16))}"/>`;
   if(destroyed[p.id]!=null)s+=L(x-9,end-9,x+9,end+9)+L(x+9,end-9,x-9,end+9);});
  acts.forEach(([i,a,b])=>{if(i!=null)s+=`<rect class="w" x="${X(i)-6}" y="${a}" width="12" height="${Math.max(10,b-a)}"/>`;});
  frags.sort((a,b)=>a.depth-b.depth).forEach(f=>{const all=f.hi<0;const lo=all?0:f.lo,hi=all?Math.max(0,d.parts.length-1):f.hi;const x1=X(lo)-78+f.depth*8,x2=X(hi)+(f.selfHi===hi?150:78)-f.depth*8;
@@ -1143,7 +1250,7 @@ function drawSQ(d){const X=i=>110+i*185,idx={};d.parts.forEach((p,i)=>idx[p.id]=
   const sx=Pz.sel===p.id||(Pz.mode.t==='sqmsg'&&Pz.mode.from===i)?' selx':'';s+=`<g class="ph" data-pid="${p.id}">`;
   if(p.actor)s+=`<rect x="${x-40}" y="${top-16}" width="80" height="66" fill="transparent"/><circle class="w${sx}" cx="${x}" cy="${top-6}" r="7"/>${P(`M${x},${top+1} V${top+17} M${x-11},${top+7} H${x+11} M${x},${top+17} L${x-9},${top+30} M${x},${top+17} L${x+9},${top+30}`)}<text class="lbl" x="${x}" y="${top+45}" font-size="12.5" text-anchor="middle">${esc(p.name||'')}</text>`;
   else{const w=Math.max(96,tw([p.name||''],12.5)+22);s+=`<rect class="w${sx}" x="${x-w/2}" y="${top}" width="${w}" height="28"/>${T(x,top+18,esc(p.name||''),{fs:12.5,u:1})}`;}s+='</g>';});
- if(!d.parts.length)s+=T(300,140,'Klicke über dem Feld auf «＋ Objekt» oder «＋ Akteur»',{fs:15});
+ if(!d.parts.length)s+=T(300,140,'Ziehe «＋ Akteur» oder «＋ Objekt» von oben hierher',{fs:15});
  return {svg:s,w:Math.max(760,X(Math.max(0,d.parts.length-1))+220),h:Math.max(360,bottom+30),rowY,bottom,X};
 }
 
@@ -1151,23 +1258,38 @@ function drawSQ(d){const X=i=>110+i*185,idx={};d.parts.forEach((p,i)=>idx[p.id]=
 const SQX=i=>110+i*185;
 function sqPart(x){const n=Pz.doc.parts.length;if(!n)return -1;const i=Math.max(0,Math.min(n-1,Math.round((x-110)/185)));return Math.abs(x-SQX(i))<=92?i:-1;}
 function sqIndexAt(y){const L=Pz.sq||{rowY:{}},R=Pz.doc.rows;for(let i=0;i<R.length;i++){const ry=L.rowY[R[i].id];if(ry!=null&&ry>y)return i;}return R.length;}
-function sqTools(el){const m=Pz.mode,d=Pz.doc;const on=(t,k)=>m.t===t&&(m.kind===k||m.op===k)?' on':'';
+/* Pfeilart, die beim Ziehen von Lebenslinie zu Lebenslinie entsteht */
+const sqKind=()=>Pz.mk||'sync';
+function sqTools(el){const m=Pz.mode,d=Pz.doc,mk=sqKind();const on=(t,k)=>m.t===t&&m.op===k?' on':'';
  const MB=[['sync','→ synchron'],['async','→ asynchron'],['reply','⇠ Antwort'],['create','«create»'],['destroy','«destroy»']];
- el.innerHTML=`<button class="tool${m.t==='select'?' on':''}" onclick="setMode({t:'select'})">🖱 Auswahl</button><span class="sep"></span>
- <button class="tool" onclick="sqAddPart(false)">＋ Objekt</button><button class="tool" onclick="sqAddPart(true)">＋ Akteur</button><span class="sep"></span>`+
- MB.map(([k,l])=>`<button class="tool edge${on('sqmsg',k)}" onclick="setMode({t:'sqmsg',kind:'${k}',from:null})" ${d.parts.length?'':'disabled'}>${l}</button>`).join('')+`<span class="sep"></span>`+
- ['alt','opt','loop'].map(o=>`<button class="tool${on('sqfrag',o)}" onclick="setMode({t:'sqfrag',op:'${o}'})">▭ ${o}</button>`).join('')+
- `<button class="tool${m.t==='sqelse'?' on':''}" onclick="setMode({t:'sqelse'})">┄ [else]</button><span class="sep"></span><button class="tool" onclick="undo()">↶ Rückgängig</button><button class="tool" id="clr" onclick="clearDoc(this)">🗑 Leeren</button>`;
+ el.innerHTML=`<button class="tool pal" data-pal="sqp:obj" title="Auf die Zeichenfläche ziehen oder anklicken">＋ Objekt</button><button class="tool pal" data-pal="sqp:actor" title="Auf die Zeichenfläche ziehen oder anklicken">＋ Akteur</button><span class="sep"></span>`+
+ MB.map(([k,l])=>`<button class="tool edge pal${mk===k?' on':''}" data-pal="sqm:${k}" aria-pressed="${mk===k}" title="Pfeilart für die nächste Nachricht">${l}</button>`).join('')+`<span class="sep"></span>`+
+ ['alt','opt','loop'].map(o=>`<button class="tool pal${on('sqfrag',o)}" data-pal="sqf:${o}" title="Auf eine Nachricht ziehen, oder anklicken und über mehrere Nachrichten ziehen">▭ ${o}</button>`).join('')+
+ `<button class="tool pal${m.t==='sqelse'?' on':''}" data-pal="sqe:else" title="In einen alt-Rahmen ziehen">┄ [else]</button><span class="sep"></span>${cancelBtn()}<button class="tool" onclick="undo()">↶ Rückgängig</button><button class="tool" id="clr" onclick="clearDoc(this)">🗑 Leeren</button>`;
  const h=$('#edhint');if(!h)return;
- h.textContent=!d.parts.length?'Beginne mit den Beteiligten: «＋ Akteur» und «＋ Objekt» fügen Lebenslinien von links nach rechts hinzu.':
-  m.t==='sqmsg'?(m.from!=null?'Klicke jetzt auf die Linie des Empfängers. Ein Klick auf dieselbe Linie ergibt einen Selbstaufruf. Esc bricht ab.':'Ziehe mit der Maus von der Linie des Senders zur Linie des Empfängers auf der gewünschten Höhe. Es geht auch mit zwei Klicks: erst Sender, dann Empfänger.'):
+ h.textContent=!d.parts.length?'Beginne mit den Beteiligten: Ziehe «＋ Akteur» und «＋ Objekt» von oben auf die Zeichenfläche. Ein Klick hängt sie rechts an.':
+  m.t==='sqmsg'?'Klicke jetzt auf die Linie des Empfängers. Ein Klick auf dieselbe Linie ergibt einen Selbstaufruf. Esc bricht ab.':
   m.t==='sqfrag'?`Rahmen ${m.op}: Ziehe mit der Maus von oben nach unten über die Nachrichten, die hineingehören. Ein Klick auf eine einzelne Nachricht rahmt nur diese ein.`:
   m.t==='sqelse'?'Klicke im alt-Rahmen auf die Höhe, an der der nächste Bereich beginnt.':
-  'Klicke auf einen Beteiligten, eine Nachricht oder einen Rahmen, um rechts zu bearbeiten. Nachrichten lassen sich nach oben oder unten ziehen, Beteiligte nach links oder rechts. Entf löscht.';}
-function sqFocus(id,sel){const el=$('#'+id);if(el){el.focus();if(sel&&el.select)el.select();}}
-function sqAddPart(actor){const d=Pz.doc;snap();const n=d.parts.length;const p={id:nid('p'),name:actor?(d.parts.some(x=>x.actor)?'Akteur':'Benutzer'):':Objekt'+(n+1),actor:!!actor};d.parts.push(p);Pz.sel=p.id;Pz.mode={t:'select'};touchDoc();refreshEd();sqFocus('sp_name',true);
- const cv=$('.ed-canvas');if(cv)cv.scrollLeft=Math.max(0,SQX(n)-cv.clientWidth+140);}
-function sqAddMsg(kind,a,b,y){const d=Pz.doc;if(!d.parts[a]||!d.parts[b])return;snap();const r={id:nid('r'),kind:'msg',from:d.parts[a].id,to:d.parts[b].id,mtype:kind,text:''};d.rows.splice(sqIndexAt(y),0,r);Pz.sel=r.id;Pz.mode.from=null;touchDoc();refreshEd();sqFocus('sp_text');}
+  d.parts.length<2?'Ziehe weitere Beteiligte auf die Fläche. Für eine Nachricht ziehst du danach von der Lebenslinie des Senders zur Lebenslinie des Empfängers.':
+  'Nachricht: Ziehe von der Lebenslinie des Senders zur Lebenslinie des Empfängers. Es gilt die oben markierte Pfeilart. Rahmen und [else] ziehst du von oben auf die gewünschte Nachricht. Entf löscht.';}
+/* Baustein aus der Palette wurde auf der Fläche losgelassen */
+function sqDrop(t,k,x,y){const d=Pz.doc,n=d.parts.length;
+ if(t==='sqp'){sqAddPart(k==='actor',Math.max(0,Math.min(n,Math.ceil((x-110)/185))));return;}
+ if(t==='sqm'){Pz.mk=k;const i=sqPart(x);setMode(i>=0?{t:'sqmsg',kind:k,from:i,y}:{t:'select'});return;}
+ if(t==='sqf'){const L=Pz.sq||{rowY:{}};let best=-1,bd=26;d.rows.forEach((r,i)=>{const ry=L.rowY[r.id];if(r.kind==='msg'&&ry!=null&&Math.abs(ry-y)<bd){bd=Math.abs(ry-y);best=i;}});
+  if(best>=0)sqAddFrag(k,best,best);else{const i=sqIndexAt(y);sqAddFrag(k,i,i-1);}return;}
+ if(t==='sqe')sqAddElse(y);}
+/* Baustein in der Palette wurde nur angeklickt */
+function sqClick(t,k){const m=Pz.mode;
+ if(t==='sqp')sqAddPart(k==='actor');
+ else if(t==='sqm'){Pz.mk=k;setMode({t:'select'});}
+ else if(t==='sqf')setMode(m.t==='sqfrag'&&m.op===k?{t:'select'}:{t:'sqfrag',op:k});
+ else if(t==='sqe')setMode(m.t==='sqelse'?{t:'select'}:{t:'sqelse'});}
+function sqFocus(id,sel){const el=$('#'+id);if(el&&finePtr()){el.focus();if(sel&&el.select)el.select();}}
+function sqAddPart(actor,at){const d=Pz.doc;snap();const n=d.parts.length;if(at==null||at>n)at=n;const p={id:nid('p'),name:actor?(d.parts.some(x=>x.actor)?'Akteur':'Benutzer'):':Objekt'+(n+1),actor:!!actor};d.parts.splice(at,0,p);Pz.sel=p.id;Pz.mode={t:'select'};touchDoc();refreshEd();sqFocus('sp_name',true);
+ const cv=$('.ed-canvas');if(cv&&at===n)cv.scrollLeft=Math.max(0,SQX(n)-cv.clientWidth+140);}
+function sqAddMsg(kind,a,b,y){const d=Pz.doc;if(!d.parts[a]||!d.parts[b])return;snap();const r={id:nid('r'),kind:'msg',from:d.parts[a].id,to:d.parts[b].id,mtype:kind,text:''};d.rows.splice(sqIndexAt(y),0,r);Pz.sel=r.id;Pz.mode={t:'select'};touchDoc();refreshEd();sqFocus('sp_text');}
 function sqBalance(i1,i2){const R=Pz.doc.rows;let dep=0;for(let i=i1;i<=i2;i++){const k=R[i].kind;if(k==='frag')dep++;else if(k==='end'){if(!dep)return [i1,i-1];dep--;}else if(k==='else'&&!dep)return [i1,i-1];}
  let j=i2;while(dep>0&&j+1<R.length){j++;if(R[j].kind==='frag')dep++;else if(R[j].kind==='end')dep--;}return [i1,j];}
 function sqAddFrag(op,i1,i2){const d=Pz.doc;snap();[i1,i2]=sqBalance(i1,i2);const f={id:nid('r'),kind:'frag',op,guard:''};d.rows.splice(i2+1,0,{id:nid('r'),kind:'end'});d.rows.splice(i1,0,f);Pz.sel=f.id;Pz.mode={t:'select'};touchDoc();refreshEd();sqFocus('sp_guard');}
@@ -1186,6 +1308,11 @@ function sqShift(dir){const d=Pz.doc;let i=d.parts.findIndex(p=>p.id===Pz.sel);s
  if(i>=0){const j=i+dir;if(j<0||j>=d.parts.length)return;[d.parts[i],d.parts[j]]=[d.parts[j],d.parts[i]];}
  else{i=d.rows.findIndex(r=>r.id===Pz.sel);const j=i+dir;if(i<0||j<0||j>=d.rows.length)return;[d.rows[i],d.rows[j]]=[d.rows[j],d.rows[i]];}
  touchDoc();refreshEd();}
+/* Unteren Rand eines Rahmens um eine Nachricht (oder einen ganzen inneren Rahmen) verschieben */
+function sqGrow(dir){const R=Pz.doc.rows,i=R.findIndex(r=>r.id===Pz.sel);if(i<0||R[i].kind!=='frag')return;const e=sqEndOf(i);if(e<0)return;let j;
+ if(dir>0){j=e+1;if(j>=R.length)return;if(R[j].kind==='frag'){j=sqEndOf(j);if(j<0)return;}else if(R[j].kind!=='msg')return;}
+ else{j=e-1;if(j<=i)return;if(R[j].kind==='end'){let dep=0;for(j=e-2;j>i;j--){if(R[j].kind==='end')dep++;else if(R[j].kind==='frag'){if(!dep)break;dep--;}}if(j<=i)return;}else if(R[j].kind!=='msg')return;}
+ snap();const [end]=R.splice(e,1);R.splice(j,0,end);touchDoc();refreshEd();}
 function sqFlip(){const r=Pz.doc.rows.find(x=>x.id===Pz.sel);if(!r)return;snap();[r.from,r.to]=[r.to,r.from];touchDoc();refreshEd();}
 function sqProps(el){const d=Pz.doc,p=d.parts.find(x=>x.id===Pz.sel),r=d.rows.find(x=>x.id===Pz.sel);const q=s=>esc(s||'').replace(/"/g,'&quot;');
  const inp=(id,k,v,ph)=>`<input type="text" id="${id}" value="${q(v)}" placeholder="${ph||''}" onfocus="snap()" oninput="sqEdit('${k}',this.value)" onkeydown="if(event.key==='Enter')this.blur()">`;
@@ -1200,18 +1327,21 @@ function sqProps(el){const d=Pz.doc,p=d.parts.find(x=>x.id===Pz.sel),r=d.rows.fi
  if(r&&r.kind==='frag'){const i=d.rows.indexOf(r),e=sqEndOf(i);el.innerHTML=`<b>Fragment</b><label for="sp_op">Operator</label><select id="sp_op" onchange="snap();sqEdit('op',this.value);renderProps()">${['alt','opt','loop','par','break'].map(o=>`<option ${r.op===o?'selected':''}>${o}</option>`).join('')}</select>
   <label for="sp_guard">Bedingung (Guard)</label>${inp('sp_guard','guard',r.guard,r.op==='loop'?'für jede Position':'Bedingung')}
   <p class="hint" style="margin-top:8px">${r.op==='alt'?'Ein alt hat mindestens zwei Bereiche. Den zweiten fügt die Schaltfläche unten oder das Werkzeug «[else]» hinzu.':r.op==='opt'?'opt ist ein einzelner Bereich: Er wird nur unter der Bedingung ausgeführt.':r.op==='loop'?'loop: Die Nachrichten im Rahmen werden wiederholt.':''}</p>`+
-  btns((r.op==='alt'&&e>=0?`<button class="tool" onclick="sqAddElse(0,${e})">＋ Bereich [else]</button>`:'')+`<button class="tool" onclick="sqShift(-1)">↑</button><button class="tool" onclick="sqShift(1)">↓</button>`)+`<p class="hint">Löschen entfernt nur den Rahmen, die Nachrichten bleiben.</p>`;return;}
+  `<label>Rahmen oben</label><p style="display:flex;gap:6px;flex-wrap:wrap;margin:0"><button class="tool" onclick="sqShift(-1)">↑ größer</button><button class="tool" onclick="sqShift(1)">↓ kleiner</button></p>
+  <label>Rahmen unten</label><p style="display:flex;gap:6px;flex-wrap:wrap;margin:0"><button class="tool" onclick="sqGrow(1)">↓ größer</button><button class="tool" onclick="sqGrow(-1)">↑ kleiner</button></p>`+
+  btns(r.op==='alt'&&e>=0?`<button class="tool" onclick="sqAddElse(0,${e})">＋ Bereich [else]</button>`:'')+`<p class="hint">Löschen entfernt nur den Rahmen, die Nachrichten bleiben.</p>`;return;}
  if(r&&r.kind==='else'){el.innerHTML=`<b>Bereich des Fragments</b><label for="sp_guard">Bedingung (Guard)</label>${inp('sp_guard','guard',r.guard,'else')}`+btns(`<button class="tool" onclick="sqShift(-1)">↑ Höher</button><button class="tool" onclick="sqShift(1)">↓ Tiefer</button>`);return;}
- el.innerHTML=`<p class="hint">Nichts ausgewählt.<br><br><b>So zeichnest du</b><br>1. «＋ Akteur» und «＋ Objekt» fügen Beteiligte hinzu.<br>2. Wähle die Pfeilart und ziehe von einer Linie zur anderen.<br>3. «▭ alt / opt / loop»: von oben nach unten über die Nachrichten ziehen.<br>4. Klicke auf ein beliebiges Element, um den Text hier zu ändern.<br>5. «Prüfen» unter dem Feld startet den Bot.</p>`;}
+ el.innerHTML=`<p class="hint">Nichts ausgewählt.<br><br><b>So zeichnest du</b><br>1. «＋ Akteur» und «＋ Objekt» von oben auf die Fläche ziehen.<br>2. Nachricht: von der Lebenslinie des Senders zur Lebenslinie des Empfängers ziehen. Es gilt die oben markierte Pfeilart.<br>3. «▭ alt / opt / loop» auf eine Nachricht ziehen. Die Größe des Rahmens änderst du danach hier.<br>4. Klicke auf ein beliebiges Element, um den Text hier zu ändern.<br>5. «Prüfen» unter dem Feld startet den Bot.</p>`;}
 function sqPreview(svg,dstr){let el=svg.querySelector('#sqprev');if(!el){el=document.createElementNS('http://www.w3.org/2000/svg','path');el.id='sqprev';svg.appendChild(el);}el.setAttribute('d',dstr);}
 function sqPt(e,svg){const r=svg.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top];}
 function sqDown(e,svg){const d=Pz.doc,m=Pz.mode,[x,y]=sqPt(e,svg);
  const grab=g=>{Pz.drag=Object.assign({x,y,moved:false},g);try{svg.setPointerCapture(e.pointerId);}catch(_){}e.preventDefault();};
- if(m.t==='sqmsg'){const i=sqPart(x);if(i<0){if(m.from!=null){m.from=null;renderTools();drawCanvas();}return;}
-  if(m.from!=null){grab({sq:'msg2',to:i});return;}grab({sq:'msg',from:i});return;}
+ if(m.t==='sqmsg'){const i=sqPart(x);if(i<0||m.from==null){setMode({t:'select'});return;}grab({sq:'msg2',to:i});return;}
  if(m.t==='sqfrag'){const eEl=e.target.closest('[data-eid]');grab({sq:'frag',hit:eEl?eEl.dataset.eid:null});return;}
  if(m.t==='sqelse'){grab({sq:'else'});return;}
- const pEl=e.target.closest('[data-pid]'),eEl=e.target.closest('[data-eid]');
+ const pEl=e.target.closest('[data-pid]'),eEl=e.target.closest('[data-eid]'),lEl=e.target.closest('[data-ll]');
+ /* Auf einer Lebenslinie beginnt eine neue Nachricht */
+ if(lEl&&!pEl&&!eEl){const had=Pz.sel||Pz.find;Pz.sel=null;Pz.find=null;grab({sq:'msg',from:+lEl.dataset.ll});if(had){drawCanvas();renderProps();}return;}
  if(pEl||eEl){const id=pEl?pEl.dataset.pid:eEl.dataset.eid,ch=Pz.sel!==id;Pz.sel=id;Pz.find=null;const row=d.rows.find(r=>r.id===id);
   if(pEl)grab({sq:'part',id});else if(row&&row.kind==='msg')grab({sq:'row',id});
   drawCanvas();if(ch)renderProps();return;}
@@ -1224,7 +1354,7 @@ function sqMove(e,svg){const g=Pz.drag,[x,y]=sqPt(e,svg);if(g.sq==='msg2'||g.sq=
 function sqUp(e,svg){const g=Pz.drag,d=Pz.doc,m=Pz.mode;Pz.drag=null;if(!g||e.type==='pointercancel'){drawCanvas();return;}const [x,y]=sqPt(e,svg);
  if(g.sq==='msg2'){sqAddMsg(m.kind,m.from,g.to,m.y);return;}
  if(g.sq==='else'){sqAddElse(g.y);return;}
- if(g.sq==='msg'){const j=sqPart(x);if(g.moved&&j>=0&&j!==g.from){sqAddMsg(m.kind,g.from,j,g.y);return;}m.from=g.from;m.y=g.y;renderTools();drawCanvas();return;}
+ if(g.sq==='msg'){const j=sqPart(x);if(g.moved&&j>=0&&(j!==g.from||Math.hypot(x-g.x,y-g.y)>=16)){sqAddMsg(sqKind(),g.from,j,g.y);return;}drawCanvas();return;}
  if(g.sq==='frag'){const R=d.rows;let i1,i2;
   if(!g.moved||Math.abs(y-g.y)<10){const i=g.hit?R.findIndex(r=>r.id===g.hit&&r.kind==='msg'):-1;if(i>=0){i1=i2=i;}else{i1=sqIndexAt(g.y);i2=i1-1;}}
   else{i1=sqIndexAt(Math.min(g.y,y)-1);i2=sqIndexAt(Math.max(g.y,y))-1;}

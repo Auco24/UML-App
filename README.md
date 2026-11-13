@@ -28,7 +28,7 @@ Zu jeder Diagrammart gibt es:
 
 - **Theorie** mit Notation, Vertiefung, typischen Fehlern und einem Prüfungsleitfaden
 - **Quiz** und **offene Fragen** mit Musterantworten
-- **Zeichenaufgaben** im Diagrammeditor, die ein Prüf-Bot mit der Musterlösung vergleicht
+- **Zeichenaufgaben** im Diagrammeditor, die ein Prüf-Bot mit der Musterlösung vergleicht. Bausteine zieht man aus der Leiste auf die Zeichenfläche, Linien von einem Element zum nächsten. Das geht mit Maus und Finger.
 - **Leseaufgaben** („Diagramm lesen“) und **Fehlersuchaufgaben**
 
 Dazu kommen übergreifende Funktionen:
